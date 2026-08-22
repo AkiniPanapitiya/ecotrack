@@ -1,0 +1,15 @@
+<Solution>
+  <Folder Name="/src/" />
+  <Folder Name="/src/Analytics/">
+    <Project Path="src/Analytics/AnalyticsService.csproj" />
+  </Folder>
+  <Folder Name="/src/Identity/">
+    <Project Path="src/Identity/IdentityService.csproj" />
+  </Folder>
+  <Folder Name="/src/Logistics/">
+    <Project Path="src/Logistics/LogisticsService.csproj" />
+  </Folder>
+  <Folder Name="/src/Marketplace/">
+    <Project Path="src/Marketplace/MarketplaceService.csproj" />
+  </Folder>
+</Solution>
