@@ -198,6 +198,13 @@ AutoTest.Net/
 
 # DocProject is a documentation generator add-in
 DocProject/buildhelp/
+
+# Agent files
+agent-files/
+.DS_Store
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
 DocProject/Help/*.HxT
 DocProject/Help/*.HxC
 DocProject/Help/*.hhc
