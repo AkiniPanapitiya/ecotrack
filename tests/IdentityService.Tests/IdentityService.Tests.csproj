@@ -19,7 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\services\IdentityService\IdentityService.csproj" />
+    <ProjectReference Include="..\..\src\Identity\IdentityService.csproj" />
   </ItemGroup>
 
 </Project>
