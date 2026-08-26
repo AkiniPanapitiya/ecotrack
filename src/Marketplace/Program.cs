@@ -1,12 +1,11 @@
+using Microsoft.AspNetCore.Mvc;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
@@ -14,28 +13,61 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
+// ============================================================
+// Port: 5003 | Owner: shehasi (IT24610783)
+//====================================================
 
-app.MapGet("/weatherforecast", () =>
+// GET /marketplace/health — service health check
+app.MapGet("/marketplace/health", () =>
 {
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
+    return Results.Ok(new
+    {
+        service = "Marketplace Service",
+        status = "healthy",
+        timestamp = DateTime.UtcNow,
+        version = "1.0.0"
+    });
 })
-.WithName("GetWeatherForecast");
+.WithName("GetMarketplaceHealth")
+.WithOpenApi();
+
+// GET /marketplace/listings — browse refurbished catalog
+app.MapGet("/marketplace/listings", () =>
+{
+    return Results.Ok(new
+    {
+        listings = new[]
+        {
+            new { id = 1, name = "Refurbished Dell Laptop", category = "Laptop", price = 45000, stock = 5, warrantyMonths = 6 },
+            new { id = 2, name = "Refurbished iPhone 13", category = "Mobile", price = 28000, stock = 12, warrantyMonths = 3 },
+            new { id = 3, name = "Samsung Monitor 24\"", category = "Monitor", price = 12000, stock = 8, warrantyMonths = 1 }
+        },
+        count = 3
+    });
+})
+.WithName("GetListings")
+.WithOpenApi();
+
+// GET /marketplace/listings/{id} — get listing by ID
+app.MapGet("/marketplace/listings/{id}", (int id) =>
+{
+    if (id <= 0)
+        return Results.BadRequest("Invalid listing ID.");
+
+    return Results.Ok(new
+    {
+        id = id,
+        name = "Refurbished HP Laptop 15",
+        category = "Laptop",
+        description = "Refurbished laptop in good condition. 8GB RAM, 256GB SSD.",
+        price = 38000,
+        stock = 3,
+        warrantyMonths = 6,
+        sellerId = 201,
+        createdAt = DateTime.UtcNow.AddDays(-10)
+    });
+})
+.WithName("GetListingById")
+.WithOpenApi();
 
 app.Run();
-
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
