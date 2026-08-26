@@ -40,29 +40,4 @@ public class AuthController : ControllerBase
 
         return StatusCode(StatusCodes.Status201Created, response);
     }
-
-    /// <summary>
-    /// ECO-13: Authenticate User or Recycler and receive JWT token.
-    /// </summary>
-    [HttpPost("login")]
-    [ProducesResponseType(typeof(AuthResponseDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(object), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(object), StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> Login([FromBody] LoginRequestDto request, CancellationToken cancellationToken)
-    {
-        if (!ModelState.IsValid)
-        {
-            return BadRequest(ModelState);
-        }
-
-        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
-        var (success, statusCode, message, response) = await _authService.LoginAsync(request, ipAddress, cancellationToken);
-
-        if (!success)
-        {
-            return StatusCode(statusCode, new { message });
-        }
-
-        return Ok(response);
-    }
 }

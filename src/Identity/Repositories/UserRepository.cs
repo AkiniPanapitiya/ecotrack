@@ -1,6 +1,5 @@
 using System.Data;
 using EcoTrack.IdentityService.Data;
-using EcoTrack.IdentityService.DTOs;
 using EcoTrack.IdentityService.Models;
 using MySqlConnector;
 
@@ -13,8 +12,6 @@ public interface IUserRepository
     Task<bool> CreateUserAsync(User user, CancellationToken cancellationToken = default);
     Task<bool> CreateRecyclerProfileAsync(RecyclerProfile profile, CancellationToken cancellationToken = default);
     Task<RecyclerProfile?> GetRecyclerProfileByUserIdAsync(Guid userId, CancellationToken cancellationToken = default);
-    Task<bool> UpdateProfileAsync(Guid userId, UpdateProfileDto dto, CancellationToken cancellationToken = default);
-    Task<bool> UpdateRecyclerProfileAsync(Guid userId, UpdateProfileDto dto, CancellationToken cancellationToken = default);
 }
 
 public class UserRepository : IUserRepository
@@ -143,50 +140,6 @@ public class UserRepository : IUserRepository
         }
 
         return null;
-    }
-
-    public async Task<bool> UpdateProfileAsync(Guid userId, UpdateProfileDto dto, CancellationToken cancellationToken = default)
-    {
-        await using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
-        const string sql = @"
-            UPDATE Users
-            SET FullName = @FullName,
-                PhoneNumber = @PhoneNumber,
-                Address = @Address,
-                UpdatedAt = @UpdatedAt
-            WHERE Id = @Id;";
-
-        await using var command = new MySqlCommand(sql, connection);
-        command.Parameters.AddWithValue("@Id", userId.ToString());
-        command.Parameters.AddWithValue("@FullName", dto.FullName.Trim());
-        command.Parameters.AddWithValue("@PhoneNumber", (object?)dto.PhoneNumber ?? DBNull.Value);
-        command.Parameters.AddWithValue("@Address", (object?)dto.Address ?? DBNull.Value);
-        command.Parameters.AddWithValue("@UpdatedAt", DateTime.UtcNow);
-
-        var rowsAffected = await command.ExecuteNonQueryAsync(cancellationToken);
-        return rowsAffected > 0;
-    }
-
-    public async Task<bool> UpdateRecyclerProfileAsync(Guid userId, UpdateProfileDto dto, CancellationToken cancellationToken = default)
-    {
-        await using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
-        const string sql = @"
-            UPDATE RecyclerProfiles
-            SET CompanyName = COALESCE(@CompanyName, CompanyName),
-                FacilityAddress = COALESCE(@FacilityAddress, FacilityAddress),
-                OperationalCapacityKg = COALESCE(@OperationalCapacityKg, OperationalCapacityKg),
-                UpdatedAt = @UpdatedAt
-            WHERE UserId = @UserId;";
-
-        await using var command = new MySqlCommand(sql, connection);
-        command.Parameters.AddWithValue("@UserId", userId.ToString());
-        command.Parameters.AddWithValue("@CompanyName", (object?)dto.CompanyName?.Trim() ?? DBNull.Value);
-        command.Parameters.AddWithValue("@FacilityAddress", (object?)dto.FacilityAddress?.Trim() ?? DBNull.Value);
-        command.Parameters.AddWithValue("@OperationalCapacityKg", (object?)dto.OperationalCapacityKg ?? DBNull.Value);
-        command.Parameters.AddWithValue("@UpdatedAt", DateTime.UtcNow);
-
-        var rowsAffected = await command.ExecuteNonQueryAsync(cancellationToken);
-        return rowsAffected > 0;
     }
 
     private static User MapUser(MySqlDataReader reader)
