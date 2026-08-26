@@ -1,12 +1,8 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { Leaf, User, Building2, Lock, Mail, Phone, MapPin, AlertCircle, CheckCircle2, ArrowRight } from 'lucide-react';
+import { authApi } from '../services/api';
+import { Leaf, User, Building2, AlertCircle, CheckCircle2, ArrowRight } from 'lucide-react';
 
 export const RegisterView = () => {
-  const { register } = useAuth();
-  const navigate = useNavigate();
-
   const [role, setRole] = useState('User'); // 'User' or 'Recycler'
   const [formData, setFormData] = useState({
     fullName: '',
@@ -99,19 +95,17 @@ export const RegisterView = () => {
       } : {})
     };
 
-    const result = await register(payload);
-    setLoading(false);
-
-    if (result.success) {
-      setSuccessMessage(result.data.message || 'Account created successfully. Please log in.');
-      setTimeout(() => {
-        navigate('/login');
-      }, 2000);
-    } else {
-      setServerError(result.error);
-      if (result.validationErrors) {
-        setErrors(prev => ({ ...prev, ...result.validationErrors }));
+    try {
+      const response = await authApi.register(payload);
+      setSuccessMessage(response.data.message || 'Account created successfully. Please log in.');
+    } catch (error) {
+      const msg = error.response?.data?.message || 'Registration failed. Please check your inputs.';
+      setServerError(msg);
+      if (error.response?.data?.errors) {
+        setErrors(prev => ({ ...prev, ...error.response.data.errors }));
       }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -170,7 +164,7 @@ export const RegisterView = () => {
           <div className="alert alert-success">
             <CheckCircle2 size={18} />
             <div>
-              <strong>Success:</strong> {successMessage} Redirecting to login...
+              <strong>Success:</strong> {successMessage}
             </div>
           </div>
         )}
@@ -178,31 +172,27 @@ export const RegisterView = () => {
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label className="form-label">Full Name *</label>
-            <div style={{ position: 'relative' }}>
-              <input
-                type="text"
-                name="fullName"
-                className="form-input"
-                placeholder="e.g. Akini Panapitiya"
-                value={formData.fullName}
-                onChange={handleChange}
-              />
-            </div>
+            <input
+              type="text"
+              name="fullName"
+              className="form-input"
+              placeholder="e.g. Akini Panapitiya"
+              value={formData.fullName}
+              onChange={handleChange}
+            />
             {errors.fullName && <div className="form-error"><AlertCircle size={14} />{errors.fullName}</div>}
           </div>
 
           <div className="form-group">
             <label className="form-label">Email Address *</label>
-            <div style={{ position: 'relative' }}>
-              <input
-                type="email"
-                name="email"
-                className="form-input"
-                placeholder="akini@ecotrack.lk"
-                value={formData.email}
-                onChange={handleChange}
-              />
-            </div>
+            <input
+              type="email"
+              name="email"
+              className="form-input"
+              placeholder="akini@ecotrack.lk"
+              value={formData.email}
+              onChange={handleChange}
+            />
             {errors.email && <div className="form-error"><AlertCircle size={14} />{errors.email}</div>}
           </div>
 
@@ -332,13 +322,6 @@ export const RegisterView = () => {
             <ArrowRight size={18} />
           </button>
         </form>
-
-        <div style={{ textAlign: 'center', marginTop: '1.5rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-          Already registered?{' '}
-          <Link to="/login" style={{ color: 'var(--primary)', fontWeight: 600 }}>
-            Log in to your account
-          </Link>
-        </div>
       </div>
     </div>
   );

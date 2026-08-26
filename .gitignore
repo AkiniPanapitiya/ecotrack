@@ -202,10 +202,11 @@ DocProject/buildhelp/
 # Agent files
 agent-files/
 .future_stories/
+COMMIT_PLAN.md
 .DS_Store
-frontend/node_modules/
-frontend/dist/
-frontend/.vite/
+src/apps/web/node_modules/
+src/apps/web/dist/
+src/apps/web/.vite/
 DocProject/Help/*.HxT
 DocProject/Help/*.HxC
 DocProject/Help/*.hhc
