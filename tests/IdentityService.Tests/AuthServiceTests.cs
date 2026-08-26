@@ -10,23 +10,17 @@ namespace EcoTrack.IdentityService.Tests;
 public class AuthServiceTests
 {
     private readonly Mock<IUserRepository> _userRepositoryMock;
-    private readonly Mock<IAuditRepository> _auditRepositoryMock;
     private readonly Mock<IPasswordHasher> _passwordHasherMock;
-    private readonly Mock<IJwtTokenService> _jwtTokenServiceMock;
     private readonly AuthService _authService;
 
     public AuthServiceTests()
     {
         _userRepositoryMock = new Mock<IUserRepository>();
-        _auditRepositoryMock = new Mock<IAuditRepository>();
         _passwordHasherMock = new Mock<IPasswordHasher>();
-        _jwtTokenServiceMock = new Mock<IJwtTokenService>();
 
         _authService = new AuthService(
             _userRepositoryMock.Object,
-            _auditRepositoryMock.Object,
-            _passwordHasherMock.Object,
-            _jwtTokenServiceMock.Object);
+            _passwordHasherMock.Object);
     }
 
     [Fact]
@@ -50,9 +44,6 @@ public class AuthServiceTests
             .Returns("hashed_secure_password_string");
 
         _userRepositoryMock.Setup(r => r.CreateUserAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(true);
-
-        _auditRepositoryMock.Setup(a => a.LogActivityAsync(It.IsAny<UserAuditLog>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
 
         // Act
