@@ -2,22 +2,28 @@ using Microsoft.AspNetCore.Mvc;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddOpenApi();
+// Add services to the container.
+builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
+// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
+    app.UseSwagger();
+    app.UseSwaggerUI();
 }
 
 app.UseHttpsRedirection();
 
 // ============================================================
-// Port: 5004 | Owner: Dilanka (IT24610796)
+// Analytics Service — Impact Analytics, Monitoring & Compliance
+// Port: 5004 | Owner: Ekanayake (IT24610796)
 // ============================================================
 
-// GET /analytics/health — service health check
+// GET /analytics/health — Service health check
 app.MapGet("/analytics/health", () =>
 {
     return Results.Ok(new
@@ -31,7 +37,7 @@ app.MapGet("/analytics/health", () =>
 .WithName("GetAnalyticsHealth")
 .WithOpenApi();
 
-// GET /analytics/impact/summary — dummy environmental impact summary
+// GET /analytics/impact/summary — Dummy environmental impact summary
 app.MapGet("/analytics/impact/summary", () =>
 {
     return Results.Ok(new
@@ -46,7 +52,7 @@ app.MapGet("/analytics/impact/summary", () =>
 .WithName("GetImpactSummary")
 .WithOpenApi();
 
-// GET /analytics/disposal-certificates/{certId} — get a specific certificate
+// GET /analytics/disposal-certificates/{certId} — Get a specific certificate
 app.MapGet("/analytics/disposal-certificates/{certId}", (int certId) =>
 {
     if (certId <= 0)
@@ -67,7 +73,9 @@ app.MapGet("/analytics/disposal-certificates/{certId}", (int certId) =>
 
 app.Run();
 
+// ============================================================
 // Models
+// ============================================================
 
 record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
 {

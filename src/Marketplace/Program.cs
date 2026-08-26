@@ -2,20 +2,25 @@ using Microsoft.AspNetCore.Mvc;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddOpenApi();
+// Add services to the container.
+builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
+// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
+    app.UseSwagger();
+    app.UseSwaggerUI();
 }
 
 app.UseHttpsRedirection();
 
-// ============================================================
-// Port: 5003 | Owner: shehasi (IT24610783)
-//====================================================
+// =============================================
+// Port: 5003 | Owner:sehenasi (IT24610783)
+//======================================
 
 // GET /marketplace/health — service health check
 app.MapGet("/marketplace/health", () =>
@@ -31,7 +36,7 @@ app.MapGet("/marketplace/health", () =>
 .WithName("GetMarketplaceHealth")
 .WithOpenApi();
 
-// GET /marketplace/listings — browse refurbished catalog
+// GET /marketplace/listings — browse refurbished catalog (placeholder)
 app.MapGet("/marketplace/listings", () =>
 {
     return Results.Ok(new

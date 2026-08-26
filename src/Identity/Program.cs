@@ -2,20 +2,25 @@ using Microsoft.AspNetCore.Mvc;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddOpenApi();
+// Add services to the container.
+builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
+// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
+    app.UseSwagger();
+    app.UseSwaggerUI();
 }
 
 app.UseHttpsRedirection();
 
-// ========================================================
-// Port: 5001 | Owner: Akini (IT24610790)
-// =====================================================
+// ====================================================
+// Port: 5001 | Owner: ankini (IT24610790)
+// ============================================================
 
 // GET /identity/health — service health check
 app.MapGet("/identity/health", () =>
@@ -31,7 +36,7 @@ app.MapGet("/identity/health", () =>
 .WithName("GetIdentityHealth")
 .WithOpenApi();
 
-// GET /identity/recyclers — list recycler profiles
+// GET /identity/recyclers — list recycler profiles (placeholder)
 app.MapGet("/identity/recyclers", () =>
 {
     return Results.Ok(new

@@ -2,22 +2,27 @@ using Microsoft.AspNetCore.Mvc;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddOpenApi();
+// Add services to the container.
+builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
+// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
+    app.UseSwagger();
+    app.UseSwaggerUI();
 }
 
 app.UseHttpsRedirection();
 
-//===================================================
-// Port: 5002 | Owner: diloosha (IT24610798)
-//============================================================
+// ===============================
+// Port: 5002 | Owner: Dillosha (IT24610798)
+// ============================================================
 
-// GET /logistics/health — Service health check
+// GET /logistics/health — service health check
 app.MapGet("/logistics/health", () =>
 {
     return Results.Ok(new
