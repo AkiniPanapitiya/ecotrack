@@ -1,77 +1,74 @@
-using EcoTrack.IdentityService.Data;
-using EcoTrack.IdentityService.Repositories;
-using EcoTrack.IdentityService.Services;
-using Microsoft.OpenApi.Models;
+using Microsoft.AspNetCore.Mvc;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add Controllers
+// Add services to the container.
 builder.Services.AddControllers();
-
-// Configure CORS
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("AllowFrontend", policy =>
-    {
-        policy.WithOrigins(
-                "http://localhost:3000",
-                "http://localhost:5173",
-                "http://127.0.0.1:5173",
-                "http://localhost:5174",
-                "http://127.0.0.1:5174")
-            .AllowAnyHeader()
-            .AllowAnyMethod()
-            .AllowCredentials();
-    });
-});
-
-// Configure ADO.NET Data Services & Repositories (100% Parameterized SQL, Zero-ORM)
-builder.Services.AddSingleton<IDbConnectionFactory, DbConnectionFactory>();
-builder.Services.AddScoped<IUserRepository, UserRepository>();
-
-// Configure Domain Services (BCrypt Password Hashing & Registration)
-builder.Services.AddScoped<IPasswordHasher, BcryptPasswordHasher>();
-builder.Services.AddScoped<IAuthService, AuthService>();
-
-// Configure Swagger / OpenAPI
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(c =>
-{
-    c.SwaggerDoc("v1", new OpenApiInfo
-    {
-        Title = "EcoTrack Identity & Access Management API (Registration - ECO-12)",
-        Version = "v1",
-        Description = "ASP.NET Core .NET 10 Web API for User & Recycler Registration (Sprint 1 / ECO-12)."
-    });
-});
+builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-// Configure HTTP request pipeline
+// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-    app.UseSwaggerUI(c =>
-    {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "EcoTrack Identity API v1");
-    });
+    app.UseSwaggerUI();
 }
 
-app.UseCors("AllowFrontend");
+app.UseHttpsRedirection();
 
-app.UseAuthorization();
+// ====================================================
+// Port: 5001 | Owner: ankini (IT24610790)
+// ============================================================
 
-app.MapControllers();
-
-// Health check endpoint
-app.MapGet("/health", () => Results.Ok(new
+// GET /identity/health — service health check
+app.MapGet("/identity/health", () =>
 {
-    status = "Healthy",
-    service = "IdentityService",
-    version = "1.0.0",
-    framework = ".NET 10",
-    scope = "ECO-12 Registration",
-    timestamp = DateTime.UtcNow
-}));
+    return Results.Ok(new
+    {
+        service = "Identity Service",
+        status = "healthy",
+        timestamp = DateTime.UtcNow,
+        version = "1.0.0"
+    });
+})
+.WithName("GetIdentityHealth")
+.WithOpenApi();
+
+// GET /identity/recyclers — list recycler profiles (placeholder)
+app.MapGet("/identity/recyclers", () =>
+{
+    return Results.Ok(new
+    {
+        recyclers = new[]
+        {
+            new { id = 1, companyName = "GreenTech Recycles Ltd", status = "Active", kycVerified = true },
+            new { id = 2, companyName = "EcoCycle Handling Pvt Ltd", status = "Pending", kycVerified = false }
+        },
+        count = 2
+    });
+})
+.WithName("GetRecyclers")
+.WithOpenApi();
+
+// GET /identity/recyclers/{id} — get recycler by ID
+app.MapGet("/identity/recyclers/{id}", (int id) =>
+{
+    if (id <= 0)
+        return Results.BadRequest("Invalid recycler ID.");
+
+    return Results.Ok(new
+    {
+        id = id,
+        companyName = "Sample Recycler Co.",
+        email = "contact@sample.com",
+        status = "Active",
+        kycVerified = true,
+        registrationDate = DateTime.UtcNow.AddMonths(-6)
+    });
+})
+.WithName("GetRecyclerById")
+.WithOpenApi();
 
 app.Run();
