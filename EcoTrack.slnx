@@ -12,4 +12,7 @@
   <Folder Name="/src/Marketplace/">
     <Project Path="src/Marketplace/MarketplaceService.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/IdentityService.Tests/IdentityService.Tests.csproj" />
+  </Folder>
 </Solution>
