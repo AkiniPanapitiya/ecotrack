@@ -10,7 +10,7 @@
 EcoTrack is a **Smart E-Waste Management & Circular Economy Platform** that automates e-waste collection, provides fair valuation of electronic items, creates a marketplace for refurbished devices, and tracks environmental impact metrics (CO₂ diverted, heavy metals diverted from landfills).
 
 It is built as an **Event-Driven Microservices Architecture** with:
-- 4 independent **ASP.NET Core Web API (.NET 8)** microservices
+- 4 independent **ASP.NET Core Web API (.NET 10)** microservices
 - 1 **React 18 SPA** frontend
 - **Apache Kafka** for event streaming
 - **4 isolated MySQL 8.0 databases** (one per microservice)
@@ -22,8 +22,8 @@ It is built as an **Event-Driven Microservices Architecture** with:
 
 | Name | IT Number | Microservice Ownership |
 |------|-----------|----------------------|
-| Panapitiya P D A S | IT24610790 | E-Waste Collection & Logistics Service |
-| Rajapaksha R M M D C | IT24610798 | User & Recycler Identity Management Service |
+| Rajapaksha R M M D C | IT24610798 | E-Waste Collection & Logistics Service |
+| Panapitiya P D A S | IT24610790 | User & Recycler Identity Management Service |
 | **Ekanayake E M D D B** | **IT24610796** | **Impact Analytics, Monitoring & Compliance Service** |
 | Wijewardhana S L | IT24610783 | Valuation, Refurbishment & Marketplace Service |
 
@@ -99,7 +99,7 @@ It is built as an **Event-Driven Microservices Architecture** with:
 
 ## 🧩 The 4 Microservices
 
-### 1. Identity & Access Management Service (Rajapaksha — IT24610798)
+### 1. Identity & Access Management Service (Panapitiya — IT24610790)
 
 Handles user and recycler identity, authentication, and access control.
 
@@ -118,7 +118,7 @@ Handles user and recycler identity, authentication, and access control.
 
 ---
 
-### 2. E-Waste Collection & Logistics Service (Panapitiya — IT24610790)
+### 2. E-Waste Collection & Logistics Service (Rajapaksha — IT24610798)
 
 Handles e-waste pickup scheduling, route assignment, and logistics tracking.
 
