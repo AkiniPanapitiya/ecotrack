@@ -1,0 +1,174 @@
+# ========================================================
+# EcoTrack Docker Compose
+# ====================================================
+
+services:
+  # ============================================================
+  # Identity (Port 5001)
+  # Owner: Akini (IT24610790)
+  identity:
+    build:
+      context: .
+      dockerfile: src/Identity/Dockerfile
+    container_name: ecotrack-identity
+    ports:
+      - "5001:5001"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_HTTP_PORTS=5001
+      - ConnectionStrings__DefaultConnection=Server=ecotrack-db;Database=ecotrack_identity;Uid=root;Pwd=root123;
+      - Kafka__BootstrapServers=kafka:9092
+    networks:
+      - ecotrack-network
+    depends_on:
+      - kafka
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5001/identity/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+
+  # ====================================================
+  # Logistics (Port 5002)
+  # Owner: Diloosha (IT24610798)
+  # ============================================================
+  logistics:
+    build:
+      context: .
+      dockerfile: src/Logistics/Dockerfile
+    container_name: ecotrack-logistics
+    ports:
+      - "5002:5002"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_HTTP_PORTS=5002
+      - ConnectionStrings__DefaultConnection=Server=ecotrack-db;Database=ecotrack_logistics;Uid=root;Pwd=root123;
+      - Kafka__BootstrapServers=kafka:9092
+    networks:
+      - ecotrack-network
+    depends_on:
+      - kafka
+      - identity
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5002/logistics/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+
+  # ================================================
+  # Marketplace (Port 5003)
+  # Owner: sahesi (IT24610783)
+  # ====================================================
+  marketplace:
+    build:
+      context: .
+      dockerfile: src/Marketplace/Dockerfile
+    container_name: ecotrack-marketplace
+    ports:
+      - "5003:5003"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_HTTP_PORTS=5003
+      - ConnectionStrings__DefaultConnection=Server=ecotrack-db;Database=ecotrack_marketplace;Uid=root;Pwd=root123;
+      - Kafka__BootstrapServers=kafka:9092
+    networks:
+      - ecotrack-network
+    depends_on:
+      - kafka
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5003/marketplace/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+
+  # ============================================================
+  # Analytics(Port 5004)
+  # Owner: dilanka (IT24610796)
+  # ==================================================
+  analytics:
+    build:
+      context: .
+      dockerfile: src/Analytics/Dockerfile
+    container_name: ecotrack-analytics
+    ports:
+      - "5004:5004"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_HTTP_PORTS=5004
+      - ConnectionStrings__DefaultConnection=Server=ecotrack-db;Database=ecotrack_analytics;Uid=root;Pwd=root123;
+      - Kafka__BootstrapServers=kafka:9092
+    networks:
+      - ecotrack-network
+    depends_on:
+      - kafka
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5004/analytics/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+
+  # Kafka
+  kafka:
+    image: apache/kafka:3.8.0
+    container_name: ecotrack-kafka
+    ports:
+      - "9092:9092"
+    environment:
+      - KAFKA_NODE_ID=1
+      - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
+      - KAFKA_PROCESS_ROLES=broker,controller
+      - KAFKA_CONTROLLER_QUORUM_VOTERS=1@kafka:9093
+      - KAFKA_LISTENERS=PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      - KAFKA_INTER_BROKER_LISTENER_NAME=PLAINTEXT
+      - KAFKA_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
+      - KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1
+      - KAFKA_TRANSACTION_STATE_LOG_MIN_ISR=1
+      - CLUSTER_ID=ecotrack-cluster-001
+    networks:
+      - ecotrack-network
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD", "kafka-topics.sh", "--bootstrap-server", "localhost:9092", "--list"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # MySQL Database
+  db:
+    image: mysql:8.0
+    container_name: ecotrack-db
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=root123
+      - MYSQL_DATABASE=ecotrack_identity
+    volumes:
+      - db-data:/var/lib/mysql
+    networks:
+      - ecotrack-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot123"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 30s
+
+# Networks
+networks:
+  ecotrack-network:
+    driver: bridge
+
+# Volumes
+volumes:
+  kafka-data:
+    driver: local
+  db-data:
+    driver: local
