@@ -79,10 +79,41 @@ CREATE TABLE IF NOT EXISTS `UserFeedback` (
     INDEX `idx_feedback_recycler` (`RecyclerId`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 2. Logistics Database (Port 5002 - Logistics Service)
+-- 2. Logistics Database (Port 5002 - Logistics Service / ECO-50)
 CREATE DATABASE IF NOT EXISTS `ecotrack_logistics_db`
     CHARACTER SET utf8mb4
     COLLATE utf8mb4_unicode_ci;
+
+USE `ecotrack_logistics_db`;
+
+CREATE TABLE IF NOT EXISTS `PickupRequests` (
+    `Id` VARCHAR(36) NOT NULL PRIMARY KEY,
+    `UserId` VARCHAR(36) NOT NULL,
+    `Category` VARCHAR(100) NOT NULL,
+    `EstimatedWeightKg` DECIMAL(10, 2) NOT NULL,
+    `PickupAddress` VARCHAR(255) NOT NULL,
+    `ContactPhone` VARCHAR(30) NOT NULL,
+    `PreferredDate` DATE NOT NULL,
+    `TimeSlot` VARCHAR(50) NOT NULL,
+    `SpecialInstructions` TEXT NULL,
+    `Status` VARCHAR(50) NOT NULL DEFAULT 'Pending',
+    `CreatedAt` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    `UpdatedAt` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    INDEX `idx_pickup_user` (`UserId`),
+    INDEX `idx_pickup_status` (`Status`),
+    INDEX `idx_pickup_date` (`PreferredDate`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `PickupItems` (
+    `Id` VARCHAR(36) NOT NULL PRIMARY KEY,
+    `PickupRequestId` VARCHAR(36) NOT NULL,
+    `ItemName` VARCHAR(150) NOT NULL,
+    `Quantity` INT NOT NULL DEFAULT 1,
+    `ItemCondition` VARCHAR(50) NOT NULL DEFAULT 'Used',
+    `EstimatedWeightKg` DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+    CONSTRAINT `fk_pickup_item_request` FOREIGN KEY (`PickupRequestId`) REFERENCES `PickupRequests` (`Id`) ON DELETE CASCADE,
+    INDEX `idx_item_request` (`PickupRequestId`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 3. Marketplace Database (Port 5003 - Marketplace Service)
 CREATE DATABASE IF NOT EXISTS `ecotrack_marketplace_db`
