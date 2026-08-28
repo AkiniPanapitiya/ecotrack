@@ -1,92 +1,60 @@
-using Microsoft.AspNetCore.Mvc;
+using EcoTrack.LogisticsService.Data;
+using EcoTrack.LogisticsService.Repositories;
+using EcoTrack.LogisticsService.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+// Add Controllers
 builder.Services.AddControllers();
+
+// Configure CORS
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowFrontend", policy =>
+    {
+        policy.WithOrigins(
+                "http://localhost:3000",
+                "http://localhost:5173",
+                "http://127.0.0.1:5173",
+                "http://localhost:5174",
+                "http://127.0.0.1:5174")
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials();
+    });
+});
+
+// Configure ADO.NET Data Services & Repositories (100% Parameterized SQL, Zero-ORM)
+builder.Services.AddSingleton<IDbConnectionFactory, DbConnectionFactory>();
+builder.Services.AddScoped<IPickupRepository, PickupRepository>();
+builder.Services.AddScoped<IPickupService, PickupService>();
+
+// Configure Swagger / OpenAPI
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+// Configure HTTP request pipeline
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+app.UseCors("AllowFrontend");
 
-// ===============================
-// Port: 5002 | Owner: Dillosha (IT24610798)
-// ============================================================
+app.UseAuthorization();
 
-// GET /logistics/health — service health check
-app.MapGet("/logistics/health", () =>
+app.MapControllers();
+
+// Health check endpoint
+app.MapGet("/logistics/health", () => Results.Ok(new
 {
-    return Results.Ok(new
-    {
-        service = "Logistics Service",
-        status = "healthy",
-        timestamp = DateTime.UtcNow,
-        version = "1.0.0"
-    });
-})
-.WithName("GetLogisticsHealth")
-.WithOpenApi();
-
-// GET /logistics/pickup-requests — list pickup requests
-app.MapGet("/logistics/pickup-requests", () =>
-{
-    return Results.Ok(new
-    {
-        pickupRequests = new[]
-        {
-            new { id = 1, userId = 101, address = "123 Main St, Colombo", status = "Requested", scheduledDate = DateTime.UtcNow.AddDays(2) },
-            new { id = 2, userId = 102, address = "45 Galle Rd, Moratuwa", status = "PickedUp", scheduledDate = DateTime.UtcNow.AddDays(-1) }
-        },
-        count = 2
-    });
-})
-.WithName("GetPickupRequests")
-.WithOpenApi();
-
-// GET /logistics/pickup-requests/{id} — get pickup by ID
-app.MapGet("/logistics/pickup-requests/{id}", (int id) =>
-{
-    if (id <= 0)
-        return Results.BadRequest("Invalid pickup request ID.");
-
-    return Results.Ok(new
-    {
-        id = id,
-        userId = 1001,
-        items = new[] { new { category = "Laptop", weightKg = 2.5 }, new { category = "Mobile", weightKg = 0.3 } },
-        address = "Sample Address, Colombo",
-        status = "Requested",
-        scheduledDate = DateTime.UtcNow.AddDays(3),
-        qrToken = "QR-" + Guid.NewGuid().ToString().Substring(0, 8).ToUpper()
-    });
-})
-.WithName("GetPickupRequestById")
-.WithOpenApi();
-
-// POST /logistics/pickup-requests — create pickup request
-app.MapPost("/logistics/pickup-requests", (dynamic body) =>
-{
-    // Placeholder — will connect to database later
-    return Results.Created("/logistics/pickup-requests/999", new
-    {
-        id = 999,
-        userId = 1001,
-        address = "New Address",
-        status = "Requested",
-        scheduledDate = DateTime.UtcNow.AddDays(1),
-        message = "Pickup request created (placeholder)."
-    });
-})
-.WithName("CreatePickupRequest")
-.WithOpenApi();
+    status = "healthy",
+    service = "Logistics Service (E-Waste Pickup Scheduling - ECO-15)",
+    timestamp = DateTime.UtcNow,
+    version = "1.0.0"
+}));
 
 app.Run();
