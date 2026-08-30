@@ -1,74 +1,101 @@
-using Microsoft.AspNetCore.Mvc;
+using System.Text;
+using EcoTrack.IdentityService.Data;
+using EcoTrack.IdentityService.Repositories;
+using EcoTrack.IdentityService.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+// Add Controllers
 builder.Services.AddControllers();
+
+// Configure CORS
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowFrontend", policy =>
+    {
+        policy.WithOrigins(
+                "http://localhost:3000",
+                "http://localhost:5173",
+                "http://127.0.0.1:5173",
+                "http://localhost:5174",
+                "http://127.0.0.1:5174")
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials();
+    });
+});
+
+// Configure ADO.NET Data Services & Repositories (100% Parameterized SQL, Zero-ORM)
+builder.Services.AddSingleton<IDbConnectionFactory, DbConnectionFactory>();
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IAuditRepository, AuditRepository>();
+
+// Configure Domain Services
+builder.Services.AddScoped<IPasswordHasher, BcryptPasswordHasher>();
+builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
+builder.Services.AddScoped<IProfileService, ProfileService>();
+
+// Configure JWT Authentication
+var jwtSecretKey = builder.Configuration["Jwt:SecretKey"] 
+    ?? builder.Configuration["Jwt:Key"] 
+    ?? "EcoTrack_Super_Secret_Key_For_Jwt_Auth_2026_SE3022_CaseStudy!";
+var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "EcoTrack.IdentityService";
+var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "EcoTrack.ClientApps";
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.RequireHttpsMetadata = false;
+    options.SaveToken = true;
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecretKey)),
+        ValidateIssuer = true,
+        ValidIssuer = jwtIssuer,
+        ValidateAudience = true,
+        ValidAudience = jwtAudience,
+        ValidateLifetime = true,
+        ClockSkew = TimeSpan.Zero
+    };
+});
+
+builder.Services.AddAuthorization();
+
+// Configure Swagger / OpenAPI
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+// Configure HTTP request pipeline
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+app.UseCors("AllowFrontend");
 
-// ====================================================
-// Port: 5001 | Owner: ankini (IT24610790)
-// ============================================================
+app.UseAuthentication();
+app.UseAuthorization();
 
-// GET /identity/health — service health check
-app.MapGet("/identity/health", () =>
+app.MapControllers();
+
+// Health check endpoint
+app.MapGet("/identity/health", () => Results.Ok(new
 {
-    return Results.Ok(new
-    {
-        service = "Identity Service",
-        status = "healthy",
-        timestamp = DateTime.UtcNow,
-        version = "1.0.0"
-    });
-})
-.WithName("GetIdentityHealth")
-.WithOpenApi();
-
-// GET /identity/recyclers — list recycler profiles (placeholder)
-app.MapGet("/identity/recyclers", () =>
-{
-    return Results.Ok(new
-    {
-        recyclers = new[]
-        {
-            new { id = 1, companyName = "GreenTech Recycles Ltd", status = "Active", kycVerified = true },
-            new { id = 2, companyName = "EcoCycle Handling Pvt Ltd", status = "Pending", kycVerified = false }
-        },
-        count = 2
-    });
-})
-.WithName("GetRecyclers")
-.WithOpenApi();
-
-// GET /identity/recyclers/{id} — get recycler by ID
-app.MapGet("/identity/recyclers/{id}", (int id) =>
-{
-    if (id <= 0)
-        return Results.BadRequest("Invalid recycler ID.");
-
-    return Results.Ok(new
-    {
-        id = id,
-        companyName = "Sample Recycler Co.",
-        email = "contact@sample.com",
-        status = "Active",
-        kycVerified = true,
-        registrationDate = DateTime.UtcNow.AddMonths(-6)
-    });
-})
-.WithName("GetRecyclerById")
-.WithOpenApi();
+    service = "Identity Service",
+    status = "healthy",
+    timestamp = DateTime.UtcNow,
+    version = "1.0.0"
+}));
 
 app.Run();
