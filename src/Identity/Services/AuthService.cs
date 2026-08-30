@@ -8,13 +8,16 @@ public class AuthService : IAuthService
 {
     private readonly IUserRepository _userRepository;
     private readonly IPasswordHasher _passwordHasher;
+    private readonly IJwtTokenService _jwtTokenService;
 
     public AuthService(
         IUserRepository userRepository,
-        IPasswordHasher passwordHasher)
+        IPasswordHasher passwordHasher,
+        IJwtTokenService jwtTokenService)
     {
         _userRepository = userRepository;
         _passwordHasher = passwordHasher;
+        _jwtTokenService = jwtTokenService;
     }
 
     public async Task<(bool Success, int StatusCode, string Message, AuthResponseDto? Response)> RegisterAsync(
@@ -88,5 +91,47 @@ public class AuthService : IAuthService
         };
 
         return (true, 201, "Account created successfully. Please log in.", response);
+    }
+
+    public async Task<(bool Success, int StatusCode, string Message, AuthResponseDto? Response)> LoginAsync(
+        LoginRequestDto request, string? ipAddress = null, CancellationToken cancellationToken = default)
+    {
+        // 1. Fetch user by email
+        var user = await _userRepository.GetByEmailAsync(request.Email, cancellationToken);
+        if (user == null || !user.IsActive)
+        {
+            return (false, 401, "Invalid credentials.", null);
+        }
+
+        // 2. Verify BCrypt password
+        var isPasswordValid = _passwordHasher.VerifyPassword(request.Password, user.PasswordHash);
+        if (!isPasswordValid)
+        {
+            return (false, 401, "Invalid credentials.", null);
+        }
+
+        // 3. If Recycler, fetch profile verification status
+        RecyclerProfile? recyclerProfile = null;
+        if (string.Equals(user.Role, "Recycler", StringComparison.OrdinalIgnoreCase))
+        {
+            recyclerProfile = await _userRepository.GetRecyclerProfileByUserIdAsync(user.Id, cancellationToken);
+        }
+
+        // 4. Generate symmetric HMAC-SHA256 JWT token with role claims
+        var (token, expiresAt) = _jwtTokenService.GenerateToken(user, recyclerProfile?.VerificationStatus);
+
+        var response = new AuthResponseDto
+        {
+            UserId = user.Id,
+            FullName = user.FullName,
+            Email = user.Email,
+            Role = user.Role,
+            Token = token,
+            ExpiresAt = expiresAt,
+            VerificationStatus = recyclerProfile?.VerificationStatus,
+            Message = "Login successful."
+        };
+
+        return (true, 200, "Login successful.", response);
     }
 }

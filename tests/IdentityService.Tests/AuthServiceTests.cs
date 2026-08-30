@@ -11,16 +11,19 @@ public class AuthServiceTests
 {
     private readonly Mock<IUserRepository> _userRepositoryMock;
     private readonly Mock<IPasswordHasher> _passwordHasherMock;
+    private readonly Mock<IJwtTokenService> _jwtTokenServiceMock;
     private readonly AuthService _authService;
 
     public AuthServiceTests()
     {
         _userRepositoryMock = new Mock<IUserRepository>();
         _passwordHasherMock = new Mock<IPasswordHasher>();
+        _jwtTokenServiceMock = new Mock<IJwtTokenService>();
 
         _authService = new AuthService(
             _userRepositoryMock.Object,
-            _passwordHasherMock.Object);
+            _passwordHasherMock.Object,
+            _jwtTokenServiceMock.Object);
     }
 
     [Fact]
@@ -129,5 +132,105 @@ public class AuthServiceTests
         _userRepositoryMock.Verify(r => r.CreateRecyclerProfileAsync(
             It.Is<RecyclerProfile>(p => p.VerificationStatus == "Pending" && p.CompanyName == "Green Yard Ltd"),
             It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task LoginAsync_ValidCredentials_Returns200AndValidJwt()
+    {
+        // Arrange
+        var request = new LoginRequestDto
+        {
+            Email = "akini@ecotrack.lk",
+            Password = "Password@123"
+        };
+
+        var user = new User
+        {
+            Id = Guid.NewGuid(),
+            FullName = "Akini Panapitiya",
+            Email = "akini@ecotrack.lk",
+            PasswordHash = "$2a$11$mockhash",
+            Role = "User",
+            IsActive = true
+        };
+
+        _userRepositoryMock.Setup(r => r.GetByEmailAsync(request.Email, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+
+        _passwordHasherMock.Setup(h => h.VerifyPassword(request.Password, user.PasswordHash))
+            .Returns(true);
+
+        var expires = DateTime.UtcNow.AddHours(2);
+        _jwtTokenServiceMock.Setup(j => j.GenerateToken(user, null))
+            .Returns(("mock.jwt.token.string", expires));
+
+        // Act
+        var (success, statusCode, message, response) = await _authService.LoginAsync(request);
+
+        // Assert
+        Assert.True(success);
+        Assert.Equal(200, statusCode);
+        Assert.NotNull(response);
+        Assert.Equal("mock.jwt.token.string", response.Token);
+        Assert.Equal("User", response.Role);
+        Assert.Equal("Login successful.", response.Message);
+    }
+
+    [Fact]
+    public async Task LoginAsync_IncorrectPassword_Returns401InvalidCredentials()
+    {
+        // Arrange
+        var request = new LoginRequestDto
+        {
+            Email = "akini@ecotrack.lk",
+            Password = "WrongPassword!"
+        };
+
+        var user = new User
+        {
+            Id = Guid.NewGuid(),
+            Email = "akini@ecotrack.lk",
+            PasswordHash = "$2a$11$mockhash",
+            Role = "User",
+            IsActive = true
+        };
+
+        _userRepositoryMock.Setup(r => r.GetByEmailAsync(request.Email, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+
+        _passwordHasherMock.Setup(h => h.VerifyPassword(request.Password, user.PasswordHash))
+            .Returns(false);
+
+        // Act
+        var (success, statusCode, message, response) = await _authService.LoginAsync(request);
+
+        // Assert
+        Assert.False(success);
+        Assert.Equal(401, statusCode);
+        Assert.Equal("Invalid credentials.", message);
+        Assert.Null(response);
+    }
+
+    [Fact]
+    public async Task LoginAsync_NonExistingEmail_Returns401InvalidCredentials()
+    {
+        // Arrange
+        var request = new LoginRequestDto
+        {
+            Email = "nonexisting@ecotrack.lk",
+            Password = "SomePassword@123"
+        };
+
+        _userRepositoryMock.Setup(r => r.GetByEmailAsync(request.Email, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((User?)null);
+
+        // Act
+        var (success, statusCode, message, response) = await _authService.LoginAsync(request);
+
+        // Assert
+        Assert.False(success);
+        Assert.Equal(401, statusCode);
+        Assert.Equal("Invalid credentials.", message);
+        Assert.Null(response);
     }
 }

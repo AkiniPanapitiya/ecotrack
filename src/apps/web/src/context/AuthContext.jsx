@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { authApi } from '../services/api';
+import { authApi, profileApi } from '../services/api';
 
 const AuthContext = createContext(null);
 
@@ -67,7 +67,7 @@ export const AuthProvider = ({ children }) => {
   const refreshProfile = async () => {
     if (!token) return null;
     try {
-      const response = await authApi.getProfile();
+      const response = await profileApi.getProfile();
       const profileData = response.data;
       setUser((prev) => ({ ...prev, ...profileData }));
       return profileData;
