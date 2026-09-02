@@ -1,6 +1,8 @@
 using EcoTrack.IdentityService.DTOs;
 using EcoTrack.IdentityService.Services;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
+using System.IdentityModel.Tokens.Jwt;
 
 namespace EcoTrack.IdentityService.Controllers;
 
@@ -65,4 +67,29 @@ public class AuthController : ControllerBase
 
         return Ok(response);
     }
+    /// <summary>
+    /// ECO-63: Logout - invalidate the current JWT by blacklisting its jti.
+    /// </summary>
+    [HttpPost("logout")]
+    [Authorize]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(object), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> Logout(CancellationToken cancellationToken)
+    {
+        var jti = User.FindFirstValue(JwtRegisteredClaimNames.Jti);
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var expClaim = User.FindFirstValue(JwtRegisteredClaimNames.Exp);
+
+        if (string.IsNullOrEmpty(jti) || string.IsNullOrEmpty(userIdClaim) || string.IsNullOrEmpty(expClaim))
+        {
+            return Unauthorized(new { message = "Invalid token." });
+        }
+
+        var expiresAt = DateTimeOffset.FromUnixTimeSeconds(long.Parse(expClaim)).UtcDateTime;
+        var (success, statusCode, message) = await _authService.LogoutAsync(
+            jti, Guid.Parse(userIdClaim), expiresAt, cancellationToken);
+
+        return StatusCode(statusCode, new { message });
+    }
+
 }
