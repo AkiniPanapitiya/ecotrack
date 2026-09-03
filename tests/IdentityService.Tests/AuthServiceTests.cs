@@ -12,6 +12,7 @@ public class AuthServiceTests
     private readonly Mock<IUserRepository> _userRepositoryMock;
     private readonly Mock<IPasswordHasher> _passwordHasherMock;
     private readonly Mock<IJwtTokenService> _jwtTokenServiceMock;
+    private readonly Mock<ITokenBlacklistRepository> _tokenBlacklistRepositoryMock;
     private readonly AuthService _authService;
 
     public AuthServiceTests()
@@ -19,11 +20,13 @@ public class AuthServiceTests
         _userRepositoryMock = new Mock<IUserRepository>();
         _passwordHasherMock = new Mock<IPasswordHasher>();
         _jwtTokenServiceMock = new Mock<IJwtTokenService>();
+        _tokenBlacklistRepositoryMock = new Mock<ITokenBlacklistRepository>();
 
         _authService = new AuthService(
             _userRepositoryMock.Object,
             _passwordHasherMock.Object,
-            _jwtTokenServiceMock.Object);
+            _jwtTokenServiceMock.Object,
+            _tokenBlacklistRepositoryMock.Object);
     }
 
     [Fact]
@@ -232,5 +235,46 @@ public class AuthServiceTests
         Assert.Equal(401, statusCode);
         Assert.Equal("Invalid credentials.", message);
         Assert.Null(response);
+    }
+
+    [Fact]
+public async Task LogoutAsync_ValidJti_AddsToBlacklistAndReturns200()
+{
+    // Arrange
+    var jti = Guid.NewGuid().ToString();
+    var userId = Guid.NewGuid();
+    var expiresAt = DateTime.UtcNow.AddMinutes(30);
+
+    _tokenBlacklistRepositoryMock
+        .Setup(r => r.AddAsync(jti, userId, expiresAt, It.IsAny<CancellationToken>()))
+        .ReturnsAsync(true);
+
+    // Act
+    var (success, statusCode, message) = await _authService.LogoutAsync(jti, userId, expiresAt);
+
+    // Assert
+    Assert.True(success);
+    Assert.Equal(200, statusCode);
+    Assert.Equal("Logged out successfully.", message);
+}
+
+    [Fact]
+    public async Task LogoutAsync_RepositoryFails_Returns500()
+    {
+        // Arrange
+        var jti = Guid.NewGuid().ToString();
+        var userId = Guid.NewGuid();
+        var expiresAt = DateTime.UtcNow.AddMinutes(30);
+
+        _tokenBlacklistRepositoryMock
+            .Setup(r => r.AddAsync(jti, userId, expiresAt, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
+        // Act
+        var (success, statusCode, message) = await _authService.LogoutAsync(jti, userId, expiresAt);
+
+        // Assert
+        Assert.False(success);
+        Assert.Equal(500, statusCode);
     }
 }

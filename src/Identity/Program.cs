@@ -4,6 +4,12 @@ using EcoTrack.IdentityService.Repositories;
 using EcoTrack.IdentityService.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using System.Security.Claims;
+using System.IdentityModel.Tokens.Jwt;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using EcoTrack.IdentityService.Repositories;
+
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -31,6 +37,7 @@ builder.Services.AddCors(options =>
 builder.Services.AddSingleton<IDbConnectionFactory, DbConnectionFactory>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IAuditRepository, AuditRepository>();
+builder.Services.AddScoped<ITokenBlacklistRepository, TokenBlacklistRepository>();
 
 // Configure Domain Services
 builder.Services.AddScoped<IPasswordHasher, BcryptPasswordHasher>();
@@ -64,6 +71,26 @@ builder.Services.AddAuthentication(options =>
         ValidAudience = jwtAudience,
         ValidateLifetime = true,
         ClockSkew = TimeSpan.Zero
+    };
+    options.Events = new JwtBearerEvents
+    {
+        OnTokenValidated = async context =>
+        {
+            var jti = context.Principal?.FindFirstValue(JwtRegisteredClaimNames.Jti);
+            if (string.IsNullOrEmpty(jti))
+            {
+                context.Fail("Invalid token.");
+                return;
+            }
+
+            var blacklistRepo = context.HttpContext.RequestServices
+                .GetRequiredService<ITokenBlacklistRepository>();
+
+            if (await blacklistRepo.IsBlacklistedAsync(jti))
+            {
+                context.Fail("This token has been logged out.");
+            }
+        }
     };
 });
 

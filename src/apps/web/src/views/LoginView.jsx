@@ -2,9 +2,12 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Leaf, Lock, Mail, AlertCircle, ArrowRight } from 'lucide-react';
+import { useLocation } from "react-router-dom";
 
 export const LoginView = () => {
   const { login } = useAuth();
+  const location = useLocation();
+  const [logoutMessage, setLogoutMessage] = useState(location.state?.message || '');
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
@@ -72,6 +75,12 @@ export const LoginView = () => {
             Log in with your EcoTrack credentials
           </p>
         </div>
+
+        {logoutMessage && (
+          <div className="alert alert-success">
+            {logoutMessage}
+          </div>
+        )}
 
         {serverError && (
           <div className="alert alert-danger">

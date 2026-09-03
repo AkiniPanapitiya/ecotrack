@@ -57,7 +57,12 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = () => {
+  const logout =async () => {
+    try{
+      await authApi.logout();
+    } catch(error){
+      console.error('Logout failed:', error);
+    }
     setToken(null);
     setUser(null);
     localStorage.removeItem('ecotrack_token');

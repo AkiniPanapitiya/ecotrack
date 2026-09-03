@@ -10,14 +10,18 @@ public class AuthService : IAuthService
     private readonly IPasswordHasher _passwordHasher;
     private readonly IJwtTokenService _jwtTokenService;
 
+    private readonly ITokenBlacklistRepository _tokenBlacklistRepository;
+
     public AuthService(
         IUserRepository userRepository,
         IPasswordHasher passwordHasher,
-        IJwtTokenService jwtTokenService)
+        IJwtTokenService jwtTokenService,
+        ITokenBlacklistRepository tokenBlacklistRepository)
     {
         _userRepository = userRepository;
         _passwordHasher = passwordHasher;
         _jwtTokenService = jwtTokenService;
+        _tokenBlacklistRepository = tokenBlacklistRepository;
     }
 
     public async Task<(bool Success, int StatusCode, string Message, AuthResponseDto? Response)> RegisterAsync(
@@ -133,5 +137,16 @@ public class AuthService : IAuthService
         };
 
         return (true, 200, "Login successful.", response);
+    }
+    public async Task<(bool Success, int StatusCode, string Message)> LogoutAsync(
+        string jti, Guid userId, DateTime tokenExpiresAt, CancellationToken cancellationToken = default)
+    {
+        var added = await _tokenBlacklistRepository.AddAsync(jti, userId, tokenExpiresAt, cancellationToken);
+        if (!added)
+        {
+            return (false, 500, "Failed to log out. Please try again.");
+        }
+
+        return (true, 200, "Logged out successfully.");
     }
 }

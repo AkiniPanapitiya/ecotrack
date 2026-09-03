@@ -7,9 +7,9 @@ export const Navbar = () => {
   const { user, isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
 
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login', {state: {message: 'You have been logged out successfully.'}});
   };
 
   return (

@@ -9,4 +9,7 @@ public interface IAuthService
 
     Task<(bool Success, int StatusCode, string Message, AuthResponseDto? Response)> LoginAsync(
         LoginRequestDto request, string? ipAddress = null, CancellationToken cancellationToken = default);
+
+    Task<(bool Success, int StatusCode, string Message)> LogoutAsync(
+    string jti, Guid userId, DateTime tokenExpiresAt, CancellationToken cancellationToken = default);
 }

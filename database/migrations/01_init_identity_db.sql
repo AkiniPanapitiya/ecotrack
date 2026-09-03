@@ -85,3 +85,13 @@ CREATE TABLE IF NOT EXISTS `UserFeedback` (
     CONSTRAINT `fk_feedback_recycler` FOREIGN KEY (`RecyclerId`) REFERENCES `Users` (`Id`) ON DELETE CASCADE,
     INDEX `idx_feedback_recycler` (`RecyclerId`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--6. Backlisted Tokens table
+CREATE TABLE IF NOT EXISTS `BlacklistedTokens` (
+    `Id` VARCHAR(36) NOT NULL PRIMARY KEY,
+    `Jti` VARCHAR(100) NOT NULL UNIQUE,  
+    `UserId` VARCHAR(36) NOT NULL,
+    `ExpiresAt` DATETIME(6) NOT NULL,
+    `CreatedAt` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    INDEX `idx_blacklist_jti` (`Jti`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
