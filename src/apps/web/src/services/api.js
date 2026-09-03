@@ -35,6 +35,7 @@ attachAuthToken(logisticsClient);
 export const authApi = {
   register: (data) => api.post('/auth/register', data),
   login: (data) => api.post('/auth/login', data),
+  logout: () => api.post('/auth/logout'),
 };
 
 // ECO-14: Profile Management Endpoints

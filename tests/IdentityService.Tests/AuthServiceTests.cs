@@ -12,7 +12,7 @@ public class AuthServiceTests
     private readonly Mock<IUserRepository> _userRepositoryMock;
     private readonly Mock<IPasswordHasher> _passwordHasherMock;
     private readonly Mock<IJwtTokenService> _jwtTokenServiceMock;
-    private readonly Mock<ITokenBlacklistRepository> _tokenBlacklistServiceMock;
+    private readonly Mock<ITokenBlacklistRepository> _tokenBlacklistRepositoryMock;
     private readonly AuthService _authService;
 
     public AuthServiceTests()
@@ -20,13 +20,13 @@ public class AuthServiceTests
         _userRepositoryMock = new Mock<IUserRepository>();
         _passwordHasherMock = new Mock<IPasswordHasher>();
         _jwtTokenServiceMock = new Mock<IJwtTokenService>();
-        _tokenBlacklistServiceMock = new Mock<ITokenBlacklistRepository>();
+        _tokenBlacklistRepositoryMock = new Mock<ITokenBlacklistRepository>();
 
         _authService = new AuthService(
             _userRepositoryMock.Object,
             _passwordHasherMock.Object,
             _jwtTokenServiceMock.Object,
-            _tokenBlacklistServiceMock.Object);
+            _tokenBlacklistRepositoryMock.Object);
     }
 
     [Fact]
