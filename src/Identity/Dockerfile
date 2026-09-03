@@ -28,4 +28,4 @@ HEALTHCHECK --interval=10s --timeout=3s --start-period=5s --retries=3 \
 ENV ASPNETCORE_ENVIRONMENT=Development
 ENV ASPNETCORE_HTTP_PORTS=5001
 
-ENTRYPOINT ["dotnet", "IdentityService.dll"]
+ENTRYPOINT ["dotnet", "EcoTrack.IdentityService.dll"]

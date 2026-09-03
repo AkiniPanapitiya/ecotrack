@@ -3,6 +3,7 @@ using EcoTrack.IdentityService.Services;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using System.IdentityModel.Tokens.Jwt;
+using Microsoft.AspNetCore.Authorization;
 
 namespace EcoTrack.IdentityService.Controllers;
 
