@@ -93,4 +93,22 @@ public class AuthController : ControllerBase
         return StatusCode(statusCode, new { message });
     }
 
+    /// <summary>
+    /// ECO-68: Request a Forgot Password
+    /// </summary>
+    [HttpPost("forgot-password")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(object), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequestDto request, CancellationToken cancellationToken)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+
+        var (success, statusCode, message) = await _authService.ForgotPasswordAsync(request, cancellationToken);
+
+        return StatusCode(statusCode, new { message });
+    }
+
 }
