@@ -46,12 +46,15 @@ public class PickupRequestDto
 {
     public Guid Id { get; set; }
     public Guid UserId { get; set; }
+    public Guid? RecyclerId { get; set; }
     public string Category { get; set; } = string.Empty;
     public decimal EstimatedWeightKg { get; set; }
     public string PickupAddress { get; set; } = string.Empty;
     public string ContactPhone { get; set; } = string.Empty;
     public DateTime PreferredDate { get; set; }
+    public DateTime? ScheduledDate { get; set; }
     public string TimeSlot { get; set; } = string.Empty;
+    public string? ScheduledTimeSlot { get; set; }
     public string? SpecialInstructions { get; set; }
     public string Status { get; set; } = "Pending";
     public DateTime CreatedAt { get; set; }
@@ -66,4 +69,16 @@ public class PickupItemDto
     public int Quantity { get; set; }
     public string ItemCondition { get; set; } = "Used";
     public decimal EstimatedWeightKg { get; set; }
+}
+
+public class ConfirmScheduleRequestDto
+{
+    [Required(ErrorMessage = "Recycler ID is required.")]
+    public Guid RecyclerId { get; set; }
+
+    [Required(ErrorMessage = "Scheduled date is required.")]
+    public DateTime ScheduledDate { get; set; }
+
+    [Required(ErrorMessage = "Scheduled time slot is required.")]
+    public string ScheduledTimeSlot { get; set; } = string.Empty;
 }

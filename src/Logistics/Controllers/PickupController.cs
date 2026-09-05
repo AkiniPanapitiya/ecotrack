@@ -71,4 +71,37 @@ public class PickupController : ControllerBase
         var pickups = await _pickupService.GetPickupsByUserAsync(userId, cancellationToken);
         return Ok(pickups);
     }
-}
+
+    //ECO-74 Get all pending pickups for recyclers
+    [HttpGet("pending")]
+    [ProducesResponseType(typeof(IEnumerable<PickupRequestDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetPendingPickups(CancellationToken cancellationToken)
+    {
+        var pickups = await _pickupService.GetPendingPickupsAsync(cancellationToken);
+        return Ok(pickups);
+    }
+
+    //ECO-74 Get recycler schedule
+    [HttpGet("recycler/{recyclerId:guid}")]
+    [ProducesResponseType(typeof(IEnumerable<PickupRequestDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetRecyclerSchedule(Guid recyclerId, CancellationToken cancellationToken)
+    {
+        var pickups = await _pickupService.GetRecyclerScheduleAsync(recyclerId, cancellationToken);
+        return Ok(pickups);
+    }
+
+    //ECO-74 Confirm schedule
+    [HttpPut("{id:guid}/schedule")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(object), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> ConfirmSchedule(Guid id, [FromBody] ConfirmScheduleRequestDto dto, CancellationToken cancellationToken)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+
+        var (success, statusCode, message) = await _pickupService.ConfirmScheduleAsync(id, dto, cancellationToken);
+        return StatusCode(statusCode, new { message });
+    }
+    }
