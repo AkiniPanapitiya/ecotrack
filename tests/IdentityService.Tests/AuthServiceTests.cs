@@ -13,6 +13,7 @@ public class AuthServiceTests
     private readonly Mock<IPasswordHasher> _passwordHasherMock;
     private readonly Mock<IJwtTokenService> _jwtTokenServiceMock;
     private readonly Mock<ITokenBlacklistRepository> _tokenBlacklistRepositoryMock;
+    private readonly Mock<IPasswordResetTokenRepository> _passwordResetTokenRepositoryMock;
     private readonly AuthService _authService;
 
     public AuthServiceTests()
@@ -21,12 +22,13 @@ public class AuthServiceTests
         _passwordHasherMock = new Mock<IPasswordHasher>();
         _jwtTokenServiceMock = new Mock<IJwtTokenService>();
         _tokenBlacklistRepositoryMock = new Mock<ITokenBlacklistRepository>();
-
+        _passwordResetTokenRepositoryMock = new Mock<IPasswordResetTokenRepository>();
         _authService = new AuthService(
             _userRepositoryMock.Object,
             _passwordHasherMock.Object,
             _jwtTokenServiceMock.Object,
-            _tokenBlacklistRepositoryMock.Object);
+            _tokenBlacklistRepositoryMock.Object,
+            _passwordResetTokenRepositoryMock.Object);
     }
 
     [Fact]
@@ -237,10 +239,11 @@ public class AuthServiceTests
         Assert.Null(response);
     }
 
+
+//Logout Tests
     [Fact]
 public async Task LogoutAsync_ValidJti_AddsToBlacklistAndReturns200()
 {
-    // Arrange
     var jti = Guid.NewGuid().ToString();
     var userId = Guid.NewGuid();
     var expiresAt = DateTime.UtcNow.AddMinutes(30);
@@ -249,10 +252,8 @@ public async Task LogoutAsync_ValidJti_AddsToBlacklistAndReturns200()
         .Setup(r => r.AddAsync(jti, userId, expiresAt, It.IsAny<CancellationToken>()))
         .ReturnsAsync(true);
 
-    // Act
     var (success, statusCode, message) = await _authService.LogoutAsync(jti, userId, expiresAt);
 
-    // Assert
     Assert.True(success);
     Assert.Equal(200, statusCode);
     Assert.Equal("Logged out successfully.", message);
@@ -261,7 +262,6 @@ public async Task LogoutAsync_ValidJti_AddsToBlacklistAndReturns200()
     [Fact]
     public async Task LogoutAsync_RepositoryFails_Returns500()
     {
-        // Arrange
         var jti = Guid.NewGuid().ToString();
         var userId = Guid.NewGuid();
         var expiresAt = DateTime.UtcNow.AddMinutes(30);
@@ -270,11 +270,149 @@ public async Task LogoutAsync_ValidJti_AddsToBlacklistAndReturns200()
             .Setup(r => r.AddAsync(jti, userId, expiresAt, It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
 
-        // Act
         var (success, statusCode, message) = await _authService.LogoutAsync(jti, userId, expiresAt);
 
-        // Assert
         Assert.False(success);
         Assert.Equal(500, statusCode);
     }
-}
+
+//Forgot Password Tests
+    [Fact]
+    public async Task ForgotPasswordAsync_ExistingEmail_SavesTokenAndReturnsGenericMessage()
+    {
+        var user = new User { Id = Guid.NewGuid(), Email = "testecotrack@gmail.com" };
+        _userRepositoryMock
+            .Setup(r => r.GetByEmailAsync(user.Email, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+        _passwordResetTokenRepositoryMock
+            .Setup(r => r.AddAsync(user.Id, It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var request = new ForgotPasswordRequestDto { Email = user.Email };
+
+        var (success, statusCode, message) = await _authService.ForgotPasswordAsync(request);
+
+        Assert.True(success);
+        Assert.Equal(200, statusCode);
+        Assert.Equal("Check your email for reset instructions.", message);
+        _passwordResetTokenRepositoryMock.Verify(
+            r => r.AddAsync(user.Id, It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task ForgotPasswordAsync_NonExistentEmail_ReturnsSameGenericMessage()
+    {
+        _userRepositoryMock
+            .Setup(r => r.GetByEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((User?)null);
+
+        var request = new ForgotPasswordRequestDto { Email = "doesnotexist@gmail.com" };
+
+        var (success, statusCode, message) = await _authService.ForgotPasswordAsync(request);
+
+        Assert.True(success);
+        Assert.Equal(200, statusCode);
+        Assert.Equal("Check your email for reset instructions.", message);
+        _passwordResetTokenRepositoryMock.Verify(
+            r => r.AddAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()),
+            Times.Never);   // no token should ever be created for an email that doesn't exist
+    }
+
+//Reset Password Tests
+
+    [Fact]
+    public async Task ResetPasswordAsync_ValidUnexpiredToken_UpdatesPasswordAndMarksTokenUsed()
+    {
+        var userId = Guid.NewGuid();
+        _passwordResetTokenRepositoryMock
+            .Setup(r => r.GetByTokenHashAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((userId, DateTime.UtcNow.AddMinutes(15), false));   // not used and not expired
+        _passwordHasherMock
+            .Setup(h => h.HashPassword(It.IsAny<string>()))
+            .Returns("hashed_new_password");
+        _userRepositoryMock
+            .Setup(r => r.UpdatePasswordAsync(userId, "hashed_new_password", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var request = new ResetPasswordRequestDto
+        {
+            Token = "raw-token-value",
+            NewPassword = "NewPass123",
+            ConfirmPassword = "NewPass123"
+        };
+
+        var (success, statusCode, message) = await _authService.ResetPasswordAsync(request);
+
+        Assert.True(success);
+        Assert.Equal(200, statusCode);
+        Assert.Equal("Password reset successful. Please log in.", message);
+        _passwordResetTokenRepositoryMock.Verify(
+            r => r.MarkAsUsedAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+    [Fact]
+    public async Task ResetPasswordAsync_TokenNotFound_ReturnsInvalidMessage()
+    {
+        _passwordResetTokenRepositoryMock
+            .Setup(r => r.GetByTokenHashAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(((Guid, DateTime, bool)?)null);
+
+        var request = new ResetPasswordRequestDto
+        {
+            Token = "does-not-exist",
+            NewPassword = "NewPass123",
+            ConfirmPassword = "NewPass123"
+        };
+
+        var (success, statusCode, message) = await _authService.ResetPasswordAsync(request);
+
+        Assert.False(success);
+        Assert.Equal(400, statusCode);
+        Assert.Equal("This reset link is invalid or has expired.", message);
+    }
+
+    [Fact]
+    public async Task ResetPasswordAsync_ExpiredToken_ReturnsInvalidMessage()
+    {
+        var userId = Guid.NewGuid();
+        _passwordResetTokenRepositoryMock
+            .Setup(r => r.GetByTokenHashAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((userId, DateTime.UtcNow.AddMinutes(-5), false));
+
+        var request = new ResetPasswordRequestDto
+        {
+            Token = "expired-token",
+            NewPassword = "NewPass123",
+            ConfirmPassword = "NewPass123"
+        };
+
+        var (success, statusCode, message) = await _authService.ResetPasswordAsync(request);
+
+        Assert.False(success);
+        Assert.Equal(400, statusCode);
+        Assert.Equal("This reset link is invalid or has expired.", message);
+    }
+
+    [Fact]
+    public async Task ResetPasswordAsync_AlreadyUsedToken_ReturnsInvalidMessage()
+    {
+        var userId = Guid.NewGuid();
+        _passwordResetTokenRepositoryMock
+            .Setup(r => r.GetByTokenHashAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((userId, DateTime.UtcNow.AddMinutes(10), true));
+
+        var request = new ResetPasswordRequestDto
+        {
+            Token = "already-used-token",
+            NewPassword = "NewPass123",
+            ConfirmPassword = "NewPass123"
+        };
+
+        var (success, statusCode, message) = await _authService.ResetPasswordAsync(request);
+
+        Assert.False(success);
+        Assert.Equal(400, statusCode);
+        Assert.Equal("This reset link is invalid or has expired.", message);
+    }
+} 
