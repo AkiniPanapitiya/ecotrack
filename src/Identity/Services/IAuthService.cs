@@ -15,4 +15,7 @@ public interface IAuthService
 
     Task<(bool Success, int StatusCode, string Message)> ForgotPasswordAsync(
     ForgotPasswordRequestDto request, CancellationToken cancellationToken = default);
+
+    Task<(bool Success, int StatusCode, string Message)> ResetPasswordAsync(
+    ResetPasswordRequestDto request, CancellationToken cancellationToken = default);
 }

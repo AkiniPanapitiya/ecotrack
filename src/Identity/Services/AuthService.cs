@@ -193,4 +193,39 @@ public class AuthService : IAuthService
         return (true, 200, genericMessage);
     }
 
+    public async Task<(bool Success, int StatusCode, string Message)> ResetPasswordAsync(
+        ResetPasswordRequestDto request, CancellationToken cancellationToken = default)
+    {
+        // Hash the incoming raw token the same way we hashed it when creating it
+        var tokenHashBytes = System.Security.Cryptography.SHA256.HashData(
+            System.Text.Encoding.UTF8.GetBytes(request.Token));
+        var tokenHashHex = Convert.ToHexString(tokenHashBytes);
+
+        var tokenRecord = await _passwordResetTokenRepository.GetByTokenHashAsync(tokenHashHex, cancellationToken);
+
+        const string invalidMessage = "This reset link is invalid or has expired.";
+
+        if (tokenRecord == null)
+        {
+            return (false, 400, invalidMessage);
+        }
+
+        if (tokenRecord.Value.IsUsed || tokenRecord.Value.ExpiresAt < DateTime.UtcNow)
+        {
+            return (false, 400, invalidMessage);
+        }
+
+        var newPasswordHash = _passwordHasher.HashPassword(request.NewPassword);
+        var updated = await _userRepository.UpdatePasswordAsync(tokenRecord.Value.UserId, newPasswordHash, cancellationToken);
+
+        if (!updated)
+        {
+            return (false, 500, "Something went wrong. Please try again.");
+        }
+
+        await _passwordResetTokenRepository.MarkAsUsedAsync(tokenHashHex, cancellationToken);
+
+        return (true, 200, "Password reset successful. Please log in.");
+    }
+
 }
