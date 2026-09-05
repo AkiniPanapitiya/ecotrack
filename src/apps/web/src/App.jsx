@@ -7,6 +7,8 @@ import { LoginView } from './views/LoginView';
 import { ProfileView } from './views/ProfileView';
 import { PickupBookingView } from './views/PickupBookingView';
 import { DashboardView } from './views/DashboardView';
+import { ForgotPasswordView } from './views/ForgotPasswordView'; 
+import { ResetPasswordView } from './views/ResetPasswordView';
 
 export const App = () => {
   return (
@@ -22,6 +24,8 @@ export const App = () => {
               <Route path="/dashboard" element={<DashboardView />} />
               <Route path="/profile" element={<ProfileView />} />
               <Route path="/pickup" element={<PickupBookingView />} />
+              <Route path="/forgot-password" element={<ForgotPasswordView />} />
+              <Route path="/reset-password" element={<ResetPasswordView />} />
               <Route path="*" element={<Navigate to="/register" replace />} />
             </Routes>
           </main>

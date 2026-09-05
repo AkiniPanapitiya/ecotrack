@@ -12,16 +12,20 @@ public class AuthService : IAuthService
 
     private readonly ITokenBlacklistRepository _tokenBlacklistRepository;
 
+    private readonly IPasswordResetTokenRepository _passwordResetTokenRepository;
+
     public AuthService(
         IUserRepository userRepository,
         IPasswordHasher passwordHasher,
         IJwtTokenService jwtTokenService,
-        ITokenBlacklistRepository tokenBlacklistRepository)
+        ITokenBlacklistRepository tokenBlacklistRepository,
+        IPasswordResetTokenRepository passwordResetTokenRepository)
     {
         _userRepository = userRepository;
         _passwordHasher = passwordHasher;
         _jwtTokenService = jwtTokenService;
         _tokenBlacklistRepository = tokenBlacklistRepository;
+        _passwordResetTokenRepository = passwordResetTokenRepository;
     }
 
     public async Task<(bool Success, int StatusCode, string Message, AuthResponseDto? Response)> RegisterAsync(
@@ -149,4 +153,79 @@ public class AuthService : IAuthService
 
         return (true, 200, "Logged out successfully.");
     }
+
+    public async Task<(bool Success, int StatusCode, string Message)> ForgotPasswordAsync(
+    ForgotPasswordRequestDto request, CancellationToken cancellationToken = default)
+    {
+        const string genericMessage = "Check your email for reset instructions.";
+
+        var user = await _userRepository.GetByEmailAsync(request.Email, cancellationToken);
+
+        // Security: always return the same success message, whether the email
+        // exists or not — never reveal which emails are registered.
+        if (user == null)
+        {
+            return (true, 200, genericMessage);
+        }
+
+        // Generate a random, unguessable raw token (this is what goes in the email link)
+        var rawToken = Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32))
+            .Replace("+", "-").Replace("/", "_").Replace("=", "");
+
+        // Hash it before storing — same principle as ECO-63's blacklist
+        var tokenHash = System.Security.Cryptography.SHA256.HashData(
+            System.Text.Encoding.UTF8.GetBytes(rawToken));
+        var tokenHashHex = Convert.ToHexString(tokenHash);
+
+        var expiresAt = DateTime.UtcNow.AddMinutes(30);
+
+        var saved = await _passwordResetTokenRepository.AddAsync(user.Id, tokenHashHex, expiresAt, cancellationToken);
+        if (!saved)
+        {
+            return (false, 500, "Something went wrong. Please try again.");
+        }
+
+        // replace with real email sending once an email service exists.
+        // For now, log the link so it can be tested manually.
+        var resetLink = $"http://localhost:5173/reset-password?token={rawToken}&email={user.Email}";
+        Console.WriteLine($"[Password Reset] Link for {user.Email}: {resetLink}");
+
+        return (true, 200, genericMessage);
+    }
+
+    public async Task<(bool Success, int StatusCode, string Message)> ResetPasswordAsync(
+        ResetPasswordRequestDto request, CancellationToken cancellationToken = default)
+    {
+        // Hash the incoming raw token the same way we hashed it when creating it
+        var tokenHashBytes = System.Security.Cryptography.SHA256.HashData(
+            System.Text.Encoding.UTF8.GetBytes(request.Token));
+        var tokenHashHex = Convert.ToHexString(tokenHashBytes);
+
+        var tokenRecord = await _passwordResetTokenRepository.GetByTokenHashAsync(tokenHashHex, cancellationToken);
+
+        const string invalidMessage = "This reset link is invalid or has expired.";
+
+        if (tokenRecord == null)
+        {
+            return (false, 400, invalidMessage);
+        }
+
+        if (tokenRecord.Value.IsUsed || tokenRecord.Value.ExpiresAt < DateTime.UtcNow)
+        {
+            return (false, 400, invalidMessage);
+        }
+
+        var newPasswordHash = _passwordHasher.HashPassword(request.NewPassword);
+        var updated = await _userRepository.UpdatePasswordAsync(tokenRecord.Value.UserId, newPasswordHash, cancellationToken);
+
+        if (!updated)
+        {
+            return (false, 500, "Something went wrong. Please try again.");
+        }
+
+        await _passwordResetTokenRepository.MarkAsUsedAsync(tokenHashHex, cancellationToken);
+
+        return (true, 200, "Password reset successful. Please log in.");
+    }
+
 }

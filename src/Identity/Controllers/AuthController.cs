@@ -68,9 +68,7 @@ public class AuthController : ControllerBase
 
         return Ok(response);
     }
-    /// <summary>
-    /// ECO-63: Logout - invalidate the current JWT by blacklisting its jti.
-    /// </summary>
+ 
     [HttpPost("logout")]
     [Authorize]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
@@ -93,4 +91,36 @@ public class AuthController : ControllerBase
         return StatusCode(statusCode, new { message });
     }
 
+    
+    /// ECO-68: Request a Forgot Password
+    [HttpPost("forgot-password")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(object), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequestDto request, CancellationToken cancellationToken)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+
+        var (success, statusCode, message) = await _authService.ForgotPasswordAsync(request, cancellationToken);
+
+        return StatusCode(statusCode, new { message });
+    }
+
+    /// ECO-69: Reset Password
+    [HttpPost("reset-password")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(object), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequestDto request, CancellationToken cancellationToken)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+
+        var (success, statusCode, message) = await _authService.ResetPasswordAsync(request, cancellationToken);
+
+        return StatusCode(statusCode, new { message });
+    }
 }

@@ -95,3 +95,16 @@ CREATE TABLE IF NOT EXISTS `BlacklistedTokens` (
     `CreatedAt` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     INDEX `idx_blacklist_jti` (`Jti`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 7. Password Reset Tokens Table (ECO-67)
+CREATE TABLE IF NOT EXISTS `PasswordResetTokens` (
+    `Id` VARCHAR(36) NOT NULL PRIMARY KEY,
+    `UserId` VARCHAR(36) NOT NULL,
+    `TokenHash` VARCHAR(255) NOT NULL,
+    `ExpiresAt` DATETIME(6) NOT NULL,
+    `IsUsed` BOOLEAN NOT NULL DEFAULT FALSE,
+    `CreatedAt` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    INDEX `idx_reset_token_hash` (`TokenHash`),
+    INDEX `idx_reset_user_id` (`UserId`),
+    CONSTRAINT `fk_reset_token_user` FOREIGN KEY (`UserId`) REFERENCES `Users`(`Id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
