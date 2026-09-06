@@ -74,6 +74,7 @@ public class PickupController : ControllerBase
 
     //ECO-74 Get all pending pickups for recyclers
     [HttpGet("pending")]
+    [Authorize(Roles = "Recycler")]
     [ProducesResponseType(typeof(IEnumerable<PickupRequestDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetPendingPickups(CancellationToken cancellationToken)
     {
@@ -83,6 +84,7 @@ public class PickupController : ControllerBase
 
     //ECO-74 Get recycler schedule
     [HttpGet("recycler/{recyclerId:guid}")]
+    [Authorize(Roles = "Recycler")]
     [ProducesResponseType(typeof(IEnumerable<PickupRequestDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetRecyclerSchedule(Guid recyclerId, CancellationToken cancellationToken)
     {
@@ -92,6 +94,7 @@ public class PickupController : ControllerBase
 
     //ECO-74 Confirm schedule
     [HttpPut("{id:guid}/schedule")]
+    [Authorize(Roles = "Recycler")]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(object), StatusCodes.Status409Conflict)]
     public async Task<IActionResult> ConfirmSchedule(Guid id, [FromBody] ConfirmScheduleRequestDto dto, CancellationToken cancellationToken)

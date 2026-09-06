@@ -143,4 +143,103 @@ public class PickupServiceTests
         Assert.Equal(50.0m, result[0].EstimatedWeightKg);
         Assert.Equal("Scheduled", result[0].Status);
     }
+    //Schedule Management tests
+    [Fact]
+    public async Task ConfirmScheduleAsync_NoConflict_UpdatesToScheduledAndReturns200()
+    {
+        var pickupId = Guid.NewGuid();
+        var recyclerId = Guid.NewGuid();
+        var existingPickup = new PickupRequest { Id = pickupId, Status = "Pending" };
+
+        _pickupRepoMock.Setup(r => r.GetByIdAsync(pickupId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(existingPickup);
+        _pickupRepoMock.Setup(r => r.HasConflictAsync(recyclerId, It.IsAny<DateTime>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+        _pickupRepoMock.Setup(r => r.ConfirmScheduleAsync(pickupId, recyclerId, It.IsAny<DateTime>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var dto = new ConfirmScheduleRequestDto
+        {
+            RecyclerId = recyclerId,
+            ScheduledDate = DateTime.UtcNow.AddDays(3).Date,
+            ScheduledTimeSlot = "Morning (09:00 - 12:00)"
+        };
+
+        var (success, statusCode, message) = await _pickupService.ConfirmScheduleAsync(pickupId, dto);
+
+        Assert.True(success);
+        Assert.Equal(200, statusCode);
+        Assert.Equal("Pickup scheduled successfully.", message);
+    }
+
+    [Fact]
+    public async Task ConfirmScheduleAsync_ConflictingSlot_Returns409()
+    {
+        var pickupId = Guid.NewGuid();
+        var recyclerId = Guid.NewGuid();
+        var existingPickup = new PickupRequest { Id = pickupId, Status = "Pending" };
+
+        _pickupRepoMock.Setup(r => r.GetByIdAsync(pickupId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(existingPickup);
+        _pickupRepoMock.Setup(r => r.HasConflictAsync(recyclerId, It.IsAny<DateTime>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);   // pretend this recycler already has this exact slot taken
+
+        var dto = new ConfirmScheduleRequestDto
+        {
+            RecyclerId = recyclerId,
+            ScheduledDate = DateTime.UtcNow.AddDays(3).Date,
+            ScheduledTimeSlot = "Morning (09:00 - 12:00)"
+        };
+
+        var (success, statusCode, message) = await _pickupService.ConfirmScheduleAsync(pickupId, dto);
+
+        Assert.False(success);
+        Assert.Equal(409, statusCode);
+        Assert.Equal("This time slot is already booked.", message);
+
+        _pickupRepoMock.Verify(r => r.ConfirmScheduleAsync(
+            It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Never);   // the actual update should never be attempted if there's a conflict
+    }
+
+    [Fact]
+    public async Task ConfirmScheduleAsync_PickupNotFound_Returns404()
+    {
+        var pickupId = Guid.NewGuid();
+        _pickupRepoMock.Setup(r => r.GetByIdAsync(pickupId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((PickupRequest?)null);
+
+        var dto = new ConfirmScheduleRequestDto
+        {
+            RecyclerId = Guid.NewGuid(),
+            ScheduledDate = DateTime.UtcNow.AddDays(1).Date,
+            ScheduledTimeSlot = "Afternoon (12:00 - 15:00)"
+        };
+
+        var (success, statusCode, message) = await _pickupService.ConfirmScheduleAsync(pickupId, dto);
+
+        Assert.False(success);
+        Assert.Equal(404, statusCode);
+    }
+
+    [Fact]
+    public async Task ConfirmScheduleAsync_PastDate_Returns400()
+    {
+        var pickupId = Guid.NewGuid();
+        var existingPickup = new PickupRequest { Id = pickupId, Status = "Pending" };
+        _pickupRepoMock.Setup(r => r.GetByIdAsync(pickupId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(existingPickup);
+
+        var dto = new ConfirmScheduleRequestDto
+        {
+            RecyclerId = Guid.NewGuid(),
+            ScheduledDate = DateTime.UtcNow.AddDays(-1).Date,   // yesterday
+            ScheduledTimeSlot = "Morning (09:00 - 12:00)"
+        };
+
+        var (success, statusCode, message) = await _pickupService.ConfirmScheduleAsync(pickupId, dto);
+
+        Assert.False(success);
+        Assert.Equal(400, statusCode);
+    }
 }
