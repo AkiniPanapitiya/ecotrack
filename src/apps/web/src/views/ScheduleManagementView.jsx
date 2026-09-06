@@ -27,6 +27,14 @@ export const ScheduleManagementView = () => {
       ]);
       setPendingPickups(pendingRes.data);
       setMyPickups(mineRes.data);
+
+      const initialSlots = {};
+      pendingRes.data.forEach(p => {
+        initialSlots[p.id] = {
+          date: p.preferredDate?.split('T')[0],
+          timeSlot: p.timeSlot,
+        };
+      });
     } catch (err) {
       console.error('Failed to load schedule data', err);
     } finally {
@@ -122,11 +130,13 @@ export const ScheduleManagementView = () => {
                 type="date"
                 className="form-input"
                 style={{ width: 'auto' }}
+                defaultValue={pickup.scheduledDate?.split('T')[0]}
                 onChange={(e) => handleSlotChange(pickup.id, 'date', e.target.value)}
               />
               <select
                 className="form-input"
                 style={{ width: 'auto' }}
+                defaultValue={pickup.timeSlot}
                 onChange={(e) => handleSlotChange(pickup.id, 'timeSlot', e.target.value)}
               >
                 <option value="">Select time slot</option>
