@@ -31,6 +31,13 @@ export const Navbar = () => {
               <Truck size={18} />
               <span>Book Pickup</span>
             </Link>
+            
+            {user?.role === 'Recycler' && (
+              <Link to="/schedule" className="nav-link" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Shield size={18} />
+                <span>Schedule Management</span>
+              </Link>
+            )}
 
             <Link to="/profile" className="nav-link" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <User size={18} />

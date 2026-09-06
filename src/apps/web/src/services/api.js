@@ -51,6 +51,9 @@ export const logisticsApi = {
   createPickup: (data) => logisticsClient.post('/pickup', data),
   getPickupById: (id) => logisticsClient.get(`/pickup/${id}`),
   getUserPickups: (userId) => logisticsClient.get(`/pickup/user/${userId}`),
+  getPendingPickups: () => logisticsClient.get('/pickup/pending'),
+  getRecyclerSchedule: (recyclerId) => logisticsClient.get(`/pickup/recycler/${recyclerId}`),
+  confirmSchedule: (id, data) => logisticsClient.put(`/pickup/${id}/schedule`, data),
 };
 
 export default api;
