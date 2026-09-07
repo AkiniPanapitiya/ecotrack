@@ -107,4 +107,23 @@ public class PickupController : ControllerBase
         var (success, statusCode, message) = await _pickupService.ConfirmScheduleAsync(id, dto, cancellationToken);
         return StatusCode(statusCode, new { message });
     }
+    
+    //ECO-82 Cancel and reschedule pickups
+    [HttpPost("{id}/cancel")]
+    [Authorize(Roles = "User")]
+    public async Task<IActionResult> Cancel(int id)
+    {
+        var result = await _pickupService.CancelPickupAsync(id);
+        if (!result.Success) return BadRequest(new { message = result.Error });
+        return Ok(new { message = "Pickup cancelled" });
     }
+    [HttpPost("{id}/reschedule")]
+    [Authorize(Roles = "User")]
+    public async Task<IActionResult> Reschedule(int id, [FromBody] RescheduleRequest request)
+    {
+        var result = await _pickupService.ReschedulePickupAsync(id, request.NewDate);
+        if (!result.Success) return BadRequest(new { message = result.Error });
+        return Ok(new { message = "Pickup rescheduled" });
+    }
+
+}

@@ -249,4 +249,40 @@ public class PickupRepository : IPickupRepository
         var rows = await command.ExecuteNonQueryAsync(cancellationToken);
         return rows > 0;
     }
+    public async Task<Pickup?> GetByIdAsync(int pickupId)
+    {
+        const string sql = @"SELECT Id, Status, ScheduledDate, RecyclerId, UserId 
+                            FROM Pickups WHERE Id = @Id";
+        using var conn = new MySqlConnection(_connectionString);
+        using var cmd = new MySqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("@Id", pickupId);
+
+        await conn.OpenAsync();
+        using var reader = await cmd.ExecuteReaderAsync();
+        if (!await reader.ReadAsync()) return null;
+
+        return new Pickup
+        {
+            Id = reader.GetInt32("Id"),
+            Status = reader.GetString("Status"),
+            ScheduledDate = reader.GetDateTime("ScheduledDate"),
+            RecyclerId = reader.GetInt32("RecyclerId"),
+            UserId = reader.GetInt32("UserId")
+        };
+    }
+
+    public async Task UpdateStatusAsync(int pickupId, string newStatus, DateTime? newDate = null)
+    {
+        const string sql = @"UPDATE Pickups 
+                            SET Status = @Status, ScheduledDate = COALESCE(@NewDate, ScheduledDate)
+                            WHERE Id = @Id";
+        using var conn = new MySqlConnection(_connectionString);
+        using var cmd = new MySqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("@Status", newStatus);
+        cmd.Parameters.AddWithValue("@NewDate", (object?)newDate ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@Id", pickupId);
+
+        await conn.OpenAsync();
+        await cmd.ExecuteNonQueryAsync();
+    }
 }
