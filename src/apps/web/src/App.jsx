@@ -10,6 +10,7 @@ import { DashboardView } from './views/DashboardView';
 import { ForgotPasswordView } from './views/ForgotPasswordView'; 
 import { ResetPasswordView } from './views/ResetPasswordView';
 import { ScheduleManagementView } from './views/ScheduleManagementView';
+import { MyPickupsView } from './views/MyPickupsView';
 
 export const App = () => {
   return (
@@ -28,6 +29,7 @@ export const App = () => {
               <Route path="/forgot-password" element={<ForgotPasswordView />} />
               <Route path="/reset-password" element={<ResetPasswordView />} />
               <Route path="/schedule" element={<ScheduleManagementView />} />
+              <Route path="/my-pickups" element={<MyPickupsView />} />
               <Route path="*" element={<Navigate to="/register" replace />} />
             </Routes>
           </main>

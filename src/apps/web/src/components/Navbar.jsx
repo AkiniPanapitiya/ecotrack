@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Leaf, User, Shield, LogOut, FileText, LayoutDashboard, Building2, Truck } from 'lucide-react';
+import { Leaf, User, Shield, LogOut, FileText, LayoutDashboard, Building2, Truck, PackageSearch} from 'lucide-react';
 
 export const Navbar = () => {
   const { user, isAuthenticated, logout } = useAuth();
@@ -30,6 +30,11 @@ export const Navbar = () => {
             <Link to="/pickup" className="nav-link" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <Truck size={18} />
               <span>Book Pickup</span>
+            </Link>
+
+            <Link to="/my-pickups" className="nav-link" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <PackageSearch size={18} />
+              <span>My Pickups</span>
             </Link>
             
             {user?.role === 'Recycler' && (
