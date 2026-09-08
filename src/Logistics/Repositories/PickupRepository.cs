@@ -11,11 +11,11 @@ public interface IPickupRepository
     Task<PickupRequest?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
     Task<IEnumerable<PickupRequest>> GetByUserIdAsync(Guid userId, CancellationToken cancellationToken = default);
     Task<bool> UpdateStatusAsync(Guid id, string status, CancellationToken cancellationToken = default);
-    Task<IEnumerable<PickupRequest>> GetPendingPickupsAsync(CancellationToken cancellationToken = default);          // NEW
-    Task<IEnumerable<PickupRequest>> GetByRecyclerIdAsync(Guid recyclerId, CancellationToken cancellationToken = default);   // NEW
-    Task<bool> HasConflictAsync(Guid recyclerId, DateTime scheduledDate, string scheduledTimeSlot, CancellationToken cancellationToken = default);   // NEW
-    Task<bool> ConfirmScheduleAsync(Guid id, Guid recyclerId, DateTime scheduledDate, string scheduledTimeSlot, CancellationToken cancellationToken = default);   // NEW
-
+    Task<IEnumerable<PickupRequest>> GetPendingPickupsAsync(CancellationToken cancellationToken = default);
+    Task<IEnumerable<PickupRequest>> GetByRecyclerIdAsync(Guid recyclerId, CancellationToken cancellationToken = default);
+    Task<bool> HasConflictAsync(Guid recyclerId, DateTime scheduledDate, string scheduledTimeSlot, CancellationToken cancellationToken = default);
+    Task<bool> ConfirmScheduleAsync(Guid id, Guid recyclerId, DateTime scheduledDate, string scheduledTimeSlot, CancellationToken cancellationToken = default);
+    Task<bool> RescheduleAsync(Guid id, DateTime newDate, CancellationToken cancellationToken = default);
 }
 
 public class PickupRepository : IPickupRepository
@@ -146,6 +146,23 @@ public class PickupRepository : IPickupRepository
         return rows > 0;
     }
 
+    public async Task<bool> RescheduleAsync(Guid id, DateTime newDate, CancellationToken cancellationToken = default)
+    {
+        await using var connection = (MySqlConnection)await _connectionFactory.CreateConnectionAsync(cancellationToken);
+        const string sql = @"
+            UPDATE PickupRequests
+            SET Status = 'Requested', ScheduledDate = @ScheduledDate, UpdatedAt = @UpdatedAt
+            WHERE Id = @Id;";
+
+        await using var command = new MySqlCommand(sql, connection);
+        command.Parameters.AddWithValue("@Id", id.ToString());
+        command.Parameters.AddWithValue("@ScheduledDate", newDate.ToString("yyyy-MM-dd"));
+        command.Parameters.AddWithValue("@UpdatedAt", DateTime.UtcNow);
+
+        var rows = await command.ExecuteNonQueryAsync(cancellationToken);
+        return rows > 0;
+    }
+
     private static PickupRequest MapPickupRequest(MySqlDataReader reader)
     {
         return new PickupRequest
@@ -167,6 +184,7 @@ public class PickupRepository : IPickupRepository
             UpdatedAt = reader.GetDateTime("UpdatedAt")
         };
     }
+
     public async Task<IEnumerable<PickupRequest>> GetPendingPickupsAsync(CancellationToken cancellationToken = default)
     {
         await using var connection = (MySqlConnection)await _connectionFactory.CreateConnectionAsync(cancellationToken);
@@ -248,41 +266,5 @@ public class PickupRepository : IPickupRepository
 
         var rows = await command.ExecuteNonQueryAsync(cancellationToken);
         return rows > 0;
-    }
-    public async Task<Pickup?> GetByIdAsync(int pickupId)
-    {
-        const string sql = @"SELECT Id, Status, ScheduledDate, RecyclerId, UserId 
-                            FROM Pickups WHERE Id = @Id";
-        using var conn = new MySqlConnection(_connectionString);
-        using var cmd = new MySqlCommand(sql, conn);
-        cmd.Parameters.AddWithValue("@Id", pickupId);
-
-        await conn.OpenAsync();
-        using var reader = await cmd.ExecuteReaderAsync();
-        if (!await reader.ReadAsync()) return null;
-
-        return new Pickup
-        {
-            Id = reader.GetInt32("Id"),
-            Status = reader.GetString("Status"),
-            ScheduledDate = reader.GetDateTime("ScheduledDate"),
-            RecyclerId = reader.GetInt32("RecyclerId"),
-            UserId = reader.GetInt32("UserId")
-        };
-    }
-
-    public async Task UpdateStatusAsync(int pickupId, string newStatus, DateTime? newDate = null)
-    {
-        const string sql = @"UPDATE Pickups 
-                            SET Status = @Status, ScheduledDate = COALESCE(@NewDate, ScheduledDate)
-                            WHERE Id = @Id";
-        using var conn = new MySqlConnection(_connectionString);
-        using var cmd = new MySqlCommand(sql, conn);
-        cmd.Parameters.AddWithValue("@Status", newStatus);
-        cmd.Parameters.AddWithValue("@NewDate", (object?)newDate ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("@Id", pickupId);
-
-        await conn.OpenAsync();
-        await cmd.ExecuteNonQueryAsync();
     }
 }

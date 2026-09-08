@@ -14,6 +14,8 @@ public interface IPickupService
     Task<IEnumerable<PickupRequestDto>> GetRecyclerScheduleAsync(Guid recyclerId, CancellationToken cancellationToken = default);
     Task<(bool Success, int StatusCode, string Message)> ConfirmScheduleAsync(
         Guid pickupId, ConfirmScheduleRequestDto dto, CancellationToken cancellationToken = default);
+    Task<PickupResult> CancelPickupAsync(Guid pickupId, Guid requestingUserId, CancellationToken cancellationToken = default);
+    Task<PickupResult> ReschedulePickupAsync(Guid pickupId, DateTime newDate, Guid requestingUserId, CancellationToken cancellationToken = default);
 }
 
 public class PickupService : IPickupService
@@ -163,42 +165,48 @@ public class PickupService : IPickupService
 
         return (true, 200, "Pickup scheduled successfully.");
     }
-    public async Task<PickupResult> CancelPickupAsync(int pickupId , int requestingUserId)
+
+    public async Task<PickupResult> CancelPickupAsync(Guid pickupId, Guid requestingUserId, CancellationToken cancellationToken = default)
     {
-        var pickup = await _repo.GetByIdAsync(pickupId);
-        if (pickup == null) 
+        var pickup = await _pickupRepository.GetByIdAsync(pickupId, cancellationToken);
+        if (pickup == null)
+        {
             return PickupResult.Fail("Pickup not found");
-        
-        if (pickup.UserId != requestingUserId)           
-        return PickupResult.Fail("You are not authorized to modify this pickup."); 
+        }
 
-        // Scenario 3: Cannot cancel a completed pickup
+        if (pickup.UserId != requestingUserId)
+        {
+            return PickupResult.Fail("You are not authorized to modify this pickup.");
+        }
+
         if (pickup.Status == "Collected")
+        {
             return PickupResult.Fail("This pickup is already completed and cannot be cancelled.");
+        }
 
-        // Scenario 1: only Requested/Scheduled can be cancelled
-        await _repo.UpdateStatusAsync(pickupId, "Cancelled");
-        await _notificationService.NotifyRecyclerAsync(pickup.RecyclerId, pickupId, "Cancelled");
-
+        await _pickupRepository.UpdateStatusAsync(pickupId, "Cancelled", cancellationToken);
         return PickupResult.Ok();
     }
 
-    public async Task<PickupResult> ReschedulePickupAsync(int pickupId, DateTime newDate , int requestingUserId)
+    public async Task<PickupResult> ReschedulePickupAsync(Guid pickupId, DateTime newDate, Guid requestingUserId, CancellationToken cancellationToken = default)
     {
-        var pickup = await _repo.GetByIdAsync(pickupId);
-        if (pickup == null) 
+        var pickup = await _pickupRepository.GetByIdAsync(pickupId, cancellationToken);
+        if (pickup == null)
+        {
             return PickupResult.Fail("Pickup not found");
-
-        if (pickup.Status == "Collected")
-            return PickupResult.Fail("This pickup is already completed and cannot be cancelled.");
+        }
 
         if (pickup.UserId != requestingUserId)
+        {
             return PickupResult.Fail("You are not authorized to modify this pickup.");
+        }
 
-        // Scenario 2: reschedule resets status to Requested with new date
-        await _repo.UpdateStatusAsync(pickupId, "Requested", newDate);
-        await _notificationService.NotifyRecyclerAsync(pickup.RecyclerId, pickupId, "Rescheduled");
+        if (pickup.Status == "Collected")
+        {
+            return PickupResult.Fail("This pickup is already completed and cannot be cancelled.");
+        }
 
+        await _pickupRepository.RescheduleAsync(pickupId, newDate, cancellationToken);
         return PickupResult.Ok();
     }
 }
