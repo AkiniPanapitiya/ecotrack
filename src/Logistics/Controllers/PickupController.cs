@@ -3,6 +3,7 @@ using EcoTrack.LogisticsService.DTOs;
 using EcoTrack.LogisticsService.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using LogisticsService.Models;
 
 namespace EcoTrack.LogisticsService.Controllers;
 
@@ -107,4 +108,25 @@ public class PickupController : ControllerBase
         var (success, statusCode, message) = await _pickupService.ConfirmScheduleAsync(id, dto, cancellationToken);
         return StatusCode(statusCode, new { message });
     }
+    
+    //ECO-82 Cancel and reschedule pickups
+    [HttpPost("{id}/cancel")]
+    [Authorize(Roles = "User")]
+    public async Task<IActionResult> Cancel(Guid id)
+    {
+        var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        var result = await _pickupService.CancelPickupAsync(id, userId);
+        if (!result.Success) return BadRequest(new { message = result.Error });
+        return Ok(new { message = "Pickup cancelled" });
     }
+    [HttpPost("{id}/reschedule")]
+    [Authorize(Roles = "User")]
+    public async Task<IActionResult> Reschedule(Guid id, [FromBody] RescheduleRequest request)
+    {
+        var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        var result = await _pickupService.ReschedulePickupAsync(id, request.NewDate, userId);
+        if (!result.Success) return BadRequest(new { message = result.Error });
+        return Ok(new { message = "Pickup rescheduled" });
+    }
+
+}

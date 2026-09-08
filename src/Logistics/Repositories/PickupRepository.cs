@@ -11,11 +11,11 @@ public interface IPickupRepository
     Task<PickupRequest?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
     Task<IEnumerable<PickupRequest>> GetByUserIdAsync(Guid userId, CancellationToken cancellationToken = default);
     Task<bool> UpdateStatusAsync(Guid id, string status, CancellationToken cancellationToken = default);
-    Task<IEnumerable<PickupRequest>> GetPendingPickupsAsync(CancellationToken cancellationToken = default);          // NEW
-    Task<IEnumerable<PickupRequest>> GetByRecyclerIdAsync(Guid recyclerId, CancellationToken cancellationToken = default);   // NEW
-    Task<bool> HasConflictAsync(Guid recyclerId, DateTime scheduledDate, string scheduledTimeSlot, CancellationToken cancellationToken = default);   // NEW
-    Task<bool> ConfirmScheduleAsync(Guid id, Guid recyclerId, DateTime scheduledDate, string scheduledTimeSlot, CancellationToken cancellationToken = default);   // NEW
-
+    Task<IEnumerable<PickupRequest>> GetPendingPickupsAsync(CancellationToken cancellationToken = default);
+    Task<IEnumerable<PickupRequest>> GetByRecyclerIdAsync(Guid recyclerId, CancellationToken cancellationToken = default);
+    Task<bool> HasConflictAsync(Guid recyclerId, DateTime scheduledDate, string scheduledTimeSlot, CancellationToken cancellationToken = default);
+    Task<bool> ConfirmScheduleAsync(Guid id, Guid recyclerId, DateTime scheduledDate, string scheduledTimeSlot, CancellationToken cancellationToken = default);
+    Task<bool> RescheduleAsync(Guid id, DateTime newDate, CancellationToken cancellationToken = default);
 }
 
 public class PickupRepository : IPickupRepository
@@ -146,6 +146,23 @@ public class PickupRepository : IPickupRepository
         return rows > 0;
     }
 
+    public async Task<bool> RescheduleAsync(Guid id, DateTime newDate, CancellationToken cancellationToken = default)
+    {
+        await using var connection = (MySqlConnection)await _connectionFactory.CreateConnectionAsync(cancellationToken);
+        const string sql = @"
+            UPDATE PickupRequests
+            SET Status = 'Requested', ScheduledDate = @ScheduledDate, UpdatedAt = @UpdatedAt
+            WHERE Id = @Id;";
+
+        await using var command = new MySqlCommand(sql, connection);
+        command.Parameters.AddWithValue("@Id", id.ToString());
+        command.Parameters.AddWithValue("@ScheduledDate", newDate.ToString("yyyy-MM-dd"));
+        command.Parameters.AddWithValue("@UpdatedAt", DateTime.UtcNow);
+
+        var rows = await command.ExecuteNonQueryAsync(cancellationToken);
+        return rows > 0;
+    }
+
     private static PickupRequest MapPickupRequest(MySqlDataReader reader)
     {
         return new PickupRequest
@@ -167,6 +184,7 @@ public class PickupRepository : IPickupRepository
             UpdatedAt = reader.GetDateTime("UpdatedAt")
         };
     }
+
     public async Task<IEnumerable<PickupRequest>> GetPendingPickupsAsync(CancellationToken cancellationToken = default)
     {
         await using var connection = (MySqlConnection)await _connectionFactory.CreateConnectionAsync(cancellationToken);

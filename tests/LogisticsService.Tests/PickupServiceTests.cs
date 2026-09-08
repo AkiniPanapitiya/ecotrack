@@ -242,4 +242,70 @@ public class PickupServiceTests
         Assert.False(success);
         Assert.Equal(400, statusCode);
     }
+    
+    //ECO84- Unit tests for Cancel and Reschedule Pickup
+    [Fact]
+    public async Task CancelPickup_WhenRequested_SetsStatusToCancelled()
+    {
+        var pickupId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var pickup = new PickupRequest { Id = pickupId, Status = "Pending", UserId = userId };
+
+        _pickupRepoMock.Setup(r => r.GetByIdAsync(pickupId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(pickup);
+        _pickupRepoMock.Setup(r => r.UpdateStatusAsync(pickupId, "Cancelled", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var result = await _pickupService.CancelPickupAsync(pickupId, userId);
+
+        Assert.True(result.Success);
+    }
+
+    [Fact]
+    public async Task ReschedulePickup_WhenScheduled_ResetsToRequestedWithNewDate()
+    {
+        var pickupId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var pickup = new PickupRequest { Id = pickupId, Status = "Scheduled", UserId = userId };
+
+        _pickupRepoMock.Setup(r => r.GetByIdAsync(pickupId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(pickup);
+        _pickupRepoMock.Setup(r => r.RescheduleAsync(pickupId, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var result = await _pickupService.ReschedulePickupAsync(pickupId, DateTime.Today.AddDays(3), userId);
+
+        Assert.True(result.Success);
+    }
+
+    [Fact]
+    public async Task CancelPickup_WhenAlreadyCollected_ReturnsFailure()
+    {
+        var pickupId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var pickup = new PickupRequest { Id = pickupId, Status = "Collected", UserId = userId };
+
+        _pickupRepoMock.Setup(r => r.GetByIdAsync(pickupId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(pickup);
+
+        var result = await _pickupService.CancelPickupAsync(pickupId, userId);
+
+        Assert.False(result.Success);
+    }
+
+    [Fact]
+    public async Task CancelPickup_WhenWrongUser_ReturnsFailure()
+    {
+        var pickupId = Guid.NewGuid();
+        var ownerUserId = Guid.NewGuid();
+        var someoneElseUserId = Guid.NewGuid();
+        var pickup = new PickupRequest { Id = pickupId, Status = "Pending", UserId = ownerUserId };
+
+        _pickupRepoMock.Setup(r => r.GetByIdAsync(pickupId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(pickup);
+
+        var result = await _pickupService.CancelPickupAsync(pickupId, someoneElseUserId);
+
+        Assert.False(result.Success);
+    }
 }
