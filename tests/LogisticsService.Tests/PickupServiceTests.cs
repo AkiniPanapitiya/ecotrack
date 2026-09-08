@@ -143,4 +143,227 @@ public class PickupServiceTests
         Assert.Equal(50.0m, result[0].EstimatedWeightKg);
         Assert.Equal("Scheduled", result[0].Status);
     }
+    //Schedule Management tests
+    [Fact]
+    public async Task ConfirmScheduleAsync_NoConflict_UpdatesToScheduledAndReturns200()
+    {
+        var pickupId = Guid.NewGuid();
+        var recyclerId = Guid.NewGuid();
+        var existingPickup = new PickupRequest { Id = pickupId, Status = "Pending" };
+
+        _pickupRepoMock.Setup(r => r.GetByIdAsync(pickupId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(existingPickup);
+        _pickupRepoMock.Setup(r => r.HasConflictAsync(recyclerId, It.IsAny<DateTime>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+        _pickupRepoMock.Setup(r => r.ConfirmScheduleAsync(pickupId, recyclerId, It.IsAny<DateTime>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var dto = new ConfirmScheduleRequestDto
+        {
+            RecyclerId = recyclerId,
+            ScheduledDate = DateTime.UtcNow.AddDays(3).Date,
+            ScheduledTimeSlot = "Morning (09:00 - 12:00)"
+        };
+
+        var (success, statusCode, message) = await _pickupService.ConfirmScheduleAsync(pickupId, dto);
+
+        Assert.True(success);
+        Assert.Equal(200, statusCode);
+        Assert.Equal("Pickup scheduled successfully.", message);
+    }
+
+    [Fact]
+    public async Task ConfirmScheduleAsync_ConflictingSlot_Returns409()
+    {
+        var pickupId = Guid.NewGuid();
+        var recyclerId = Guid.NewGuid();
+        var existingPickup = new PickupRequest { Id = pickupId, Status = "Pending" };
+
+        _pickupRepoMock.Setup(r => r.GetByIdAsync(pickupId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(existingPickup);
+        _pickupRepoMock.Setup(r => r.HasConflictAsync(recyclerId, It.IsAny<DateTime>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);   // pretend this recycler already has this exact slot taken
+
+        var dto = new ConfirmScheduleRequestDto
+        {
+            RecyclerId = recyclerId,
+            ScheduledDate = DateTime.UtcNow.AddDays(3).Date,
+            ScheduledTimeSlot = "Morning (09:00 - 12:00)"
+        };
+
+        var (success, statusCode, message) = await _pickupService.ConfirmScheduleAsync(pickupId, dto);
+
+        Assert.False(success);
+        Assert.Equal(409, statusCode);
+        Assert.Equal("This time slot is already booked.", message);
+
+        _pickupRepoMock.Verify(r => r.ConfirmScheduleAsync(
+            It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Never);   // the actual update should never be attempted if there's a conflict
+    }
+
+    [Fact]
+    public async Task ConfirmScheduleAsync_PickupNotFound_Returns404()
+    {
+        var pickupId = Guid.NewGuid();
+        _pickupRepoMock.Setup(r => r.GetByIdAsync(pickupId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((PickupRequest?)null);
+
+        var dto = new ConfirmScheduleRequestDto
+        {
+            RecyclerId = Guid.NewGuid(),
+            ScheduledDate = DateTime.UtcNow.AddDays(1).Date,
+            ScheduledTimeSlot = "Afternoon (12:00 - 15:00)"
+        };
+
+        var (success, statusCode, message) = await _pickupService.ConfirmScheduleAsync(pickupId, dto);
+
+        Assert.False(success);
+        Assert.Equal(404, statusCode);
+    }
+
+    [Fact]
+    public async Task ConfirmScheduleAsync_PastDate_Returns400()
+    {
+        var pickupId = Guid.NewGuid();
+        var existingPickup = new PickupRequest { Id = pickupId, Status = "Pending" };
+        _pickupRepoMock.Setup(r => r.GetByIdAsync(pickupId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(existingPickup);
+
+        var dto = new ConfirmScheduleRequestDto
+        {
+            RecyclerId = Guid.NewGuid(),
+            ScheduledDate = DateTime.UtcNow.AddDays(-1).Date,   // yesterday
+            ScheduledTimeSlot = "Morning (09:00 - 12:00)"
+        };
+
+        var (success, statusCode, message) = await _pickupService.ConfirmScheduleAsync(pickupId, dto);
+
+        Assert.False(success);
+        Assert.Equal(400, statusCode);
+    }
+    
+    //ECO84- Unit tests for Cancel and Reschedule Pickup
+    [Fact]
+    public async Task CancelPickup_WhenRequested_SetsStatusToCancelled()
+    {
+        var pickupId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var pickup = new PickupRequest { Id = pickupId, Status = "Pending", UserId = userId };
+
+        _pickupRepoMock.Setup(r => r.GetByIdAsync(pickupId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(pickup);
+        _pickupRepoMock.Setup(r => r.UpdateStatusAsync(pickupId, "Cancelled", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var result = await _pickupService.CancelPickupAsync(pickupId, userId);
+
+        Assert.True(result.Success);
+    }
+
+    [Fact]
+    public async Task ReschedulePickup_WhenScheduled_ResetsToRequestedWithNewDate()
+    {
+        var pickupId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var pickup = new PickupRequest { Id = pickupId, Status = "Scheduled", UserId = userId };
+
+        _pickupRepoMock.Setup(r => r.GetByIdAsync(pickupId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(pickup);
+        _pickupRepoMock.Setup(r => r.RescheduleAsync(pickupId, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var result = await _pickupService.ReschedulePickupAsync(pickupId, DateTime.Today.AddDays(3), userId);
+
+        Assert.True(result.Success);
+    }
+
+    [Fact]
+    public async Task CancelPickup_WhenAlreadyCollected_ReturnsFailure()
+    {
+        var pickupId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var pickup = new PickupRequest { Id = pickupId, Status = "Collected", UserId = userId };
+
+        _pickupRepoMock.Setup(r => r.GetByIdAsync(pickupId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(pickup);
+
+        var result = await _pickupService.CancelPickupAsync(pickupId, userId);
+
+        Assert.False(result.Success);
+    }
+
+    [Fact]
+    public async Task CancelPickup_WhenWrongUser_ReturnsFailure()
+    {
+        var pickupId = Guid.NewGuid();
+        var ownerUserId = Guid.NewGuid();
+        var someoneElseUserId = Guid.NewGuid();
+        var pickup = new PickupRequest { Id = pickupId, Status = "Pending", UserId = ownerUserId };
+
+        _pickupRepoMock.Setup(r => r.GetByIdAsync(pickupId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(pickup);
+
+        var result = await _pickupService.CancelPickupAsync(pickupId, someoneElseUserId);
+
+        Assert.False(result.Success);
+    }
+    
+    [Fact]
+    public async Task GetPickupStatusAsync_ExistingPickup_ReturnsStatus()
+    {
+        var pickupId = Guid.NewGuid();
+        var pickup = new PickupRequest { Id = pickupId, Status = "Scheduled", UpdatedAt = DateTime.UtcNow };
+
+        _pickupRepoMock.Setup(r => r.GetByIdAsync(pickupId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(pickup);
+
+        var result = await _pickupService.GetPickupStatusAsync(pickupId);
+
+        Assert.NotNull(result);
+        Assert.Equal("Scheduled", result.Status);
+    }
+
+    [Fact]
+    public async Task GetPickupStatusAsync_NotFound_ReturnsNull()
+    {
+        var pickupId = Guid.NewGuid();
+        _pickupRepoMock.Setup(r => r.GetByIdAsync(pickupId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((PickupRequest?)null);
+
+        var result = await _pickupService.GetPickupStatusAsync(pickupId);
+
+        Assert.Null(result);
+    }
+    [Theory]
+    [InlineData("Requested")]
+    [InlineData("Scheduled")]
+    [InlineData("Collected")]
+    public async Task GetPickupStatusAsync_ReturnsCorrectStatus_ForEachStage(string status)
+    {
+        var pickupId = Guid.NewGuid();
+        var pickup = new PickupRequest { Id = pickupId, Status = status, UpdatedAt = DateTime.UtcNow };
+
+        _pickupRepoMock.Setup(r => r.GetByIdAsync(pickupId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(pickup);
+
+        var result = await _pickupService.GetPickupStatusAsync(pickupId);
+
+        Assert.NotNull(result);
+        Assert.Equal(status, result.Status);
+    }
+
+    // Covers Scenario 3: no pickups yet -> empty list, not an error
+    [Fact]
+    public async Task GetPickupsByUserAsync_NoPickups_ReturnsEmptyList()
+    {
+        var userId = Guid.NewGuid();
+
+        _pickupRepoMock.Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<PickupRequest>());
+
+        var result = await _pickupService.GetPickupsByUserAsync(userId);
+
+        Assert.Empty(result);
+    }
 }

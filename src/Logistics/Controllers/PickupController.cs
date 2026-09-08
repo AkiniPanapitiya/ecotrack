@@ -3,6 +3,7 @@ using EcoTrack.LogisticsService.DTOs;
 using EcoTrack.LogisticsService.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using LogisticsService.Models;
 
 namespace EcoTrack.LogisticsService.Controllers;
 
@@ -71,4 +72,76 @@ public class PickupController : ControllerBase
         var pickups = await _pickupService.GetPickupsByUserAsync(userId, cancellationToken);
         return Ok(pickups);
     }
+
+    //ECO-74 Get all pending pickups for recyclers
+    [HttpGet("pending")]
+    [Authorize(Roles = "Recycler")]
+    [ProducesResponseType(typeof(IEnumerable<PickupRequestDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetPendingPickups(CancellationToken cancellationToken)
+    {
+        var pickups = await _pickupService.GetPendingPickupsAsync(cancellationToken);
+        return Ok(pickups);
+    }
+
+    //ECO-74 Get recycler schedule
+    [HttpGet("recycler/{recyclerId:guid}")]
+    [Authorize(Roles = "Recycler")]
+    [ProducesResponseType(typeof(IEnumerable<PickupRequestDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetRecyclerSchedule(Guid recyclerId, CancellationToken cancellationToken)
+    {
+        var pickups = await _pickupService.GetRecyclerScheduleAsync(recyclerId, cancellationToken);
+        return Ok(pickups);
+    }
+
+    //ECO-74 Confirm schedule
+    [HttpPut("{id:guid}/schedule")]
+    [Authorize(Roles = "Recycler")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(object), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> ConfirmSchedule(Guid id, [FromBody] ConfirmScheduleRequestDto dto, CancellationToken cancellationToken)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+
+        var (success, statusCode, message) = await _pickupService.ConfirmScheduleAsync(id, dto, cancellationToken);
+        return StatusCode(statusCode, new { message });
+    }
+    
+    //ECO-82 Cancel and reschedule pickups
+    [HttpPost("{id}/cancel")]
+    [Authorize(Roles = "User")]
+    public async Task<IActionResult> Cancel(Guid id)
+    {
+        var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        var result = await _pickupService.CancelPickupAsync(id, userId);
+        if (!result.Success) return BadRequest(new { message = result.Error });
+        return Ok(new { message = "Pickup cancelled" });
+    }
+    [HttpPost("{id}/reschedule")]
+    [Authorize(Roles = "User")]
+    public async Task<IActionResult> Reschedule(Guid id, [FromBody] RescheduleRequest request)
+    {
+        var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        var result = await _pickupService.ReschedulePickupAsync(id, request.NewDate, userId);
+        if (!result.Success) return BadRequest(new { message = result.Error });
+        return Ok(new { message = "Pickup rescheduled" });
+    }
+
+    //ECO-82 Get pickup status
+    [HttpGet("{id:guid}/status")]
+    [ProducesResponseType(typeof(PickupStatusDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetPickupStatus(Guid id, CancellationToken cancellationToken)
+    {
+        var status = await _pickupService.GetPickupStatusAsync(id, cancellationToken);
+        if (status == null)
+        {
+            return NotFound(new { message = "Pickup request not found." });
+        }
+
+        return Ok(status);
+    }
+
 }

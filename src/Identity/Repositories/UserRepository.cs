@@ -15,6 +15,7 @@ public interface IUserRepository
     Task<RecyclerProfile?> GetRecyclerProfileByUserIdAsync(Guid userId, CancellationToken cancellationToken = default);
     Task<bool> UpdateProfileAsync(Guid userId, UpdateProfileDto dto, CancellationToken cancellationToken = default);
     Task<bool> UpdateRecyclerProfileAsync(Guid userId, UpdateProfileDto dto, CancellationToken cancellationToken = default);
+    Task<bool> UpdatePasswordAsync(Guid userId, string newPasswordHash, CancellationToken cancellationToken = default);
 }
 
 public class UserRepository : IUserRepository
@@ -204,5 +205,18 @@ public class UserRepository : IUserRepository
             CreatedAt = reader.GetDateTime("CreatedAt"),
             UpdatedAt = reader.GetDateTime("UpdatedAt")
         };
+    }
+    public async Task<bool> UpdatePasswordAsync(Guid userId, string newPasswordHash, CancellationToken cancellationToken = default)
+    {
+        await using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
+        const string sql = "UPDATE Users SET PasswordHash = @PasswordHash, UpdatedAt = @UpdatedAt WHERE Id = @Id;";
+
+        await using var command = new MySqlCommand(sql, connection);
+        command.Parameters.AddWithValue("@PasswordHash", newPasswordHash);
+        command.Parameters.AddWithValue("@UpdatedAt", DateTime.UtcNow);
+        command.Parameters.AddWithValue("@Id", userId.ToString());
+
+        var rows = await command.ExecuteNonQueryAsync(cancellationToken);
+        return rows > 0;
     }
 }

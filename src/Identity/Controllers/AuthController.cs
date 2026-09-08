@@ -1,6 +1,9 @@
 using EcoTrack.IdentityService.DTOs;
 using EcoTrack.IdentityService.Services;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
+using System.IdentityModel.Tokens.Jwt;
+using Microsoft.AspNetCore.Authorization;
 
 namespace EcoTrack.IdentityService.Controllers;
 
@@ -64,5 +67,60 @@ public class AuthController : ControllerBase
         }
 
         return Ok(response);
+    }
+ 
+    [HttpPost("logout")]
+    [Authorize]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(object), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> Logout(CancellationToken cancellationToken)
+    {
+        var jti = User.FindFirstValue(JwtRegisteredClaimNames.Jti);
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var expClaim = User.FindFirstValue(JwtRegisteredClaimNames.Exp);
+
+        if (string.IsNullOrEmpty(jti) || string.IsNullOrEmpty(userIdClaim) || string.IsNullOrEmpty(expClaim))
+        {
+            return Unauthorized(new { message = "Invalid token." });
+        }
+
+        var expiresAt = DateTimeOffset.FromUnixTimeSeconds(long.Parse(expClaim)).UtcDateTime;
+        var (success, statusCode, message) = await _authService.LogoutAsync(
+            jti, Guid.Parse(userIdClaim), expiresAt, cancellationToken);
+
+        return StatusCode(statusCode, new { message });
+    }
+
+    
+    /// ECO-68: Request a Forgot Password
+    [HttpPost("forgot-password")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(object), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequestDto request, CancellationToken cancellationToken)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+
+        var (success, statusCode, message) = await _authService.ForgotPasswordAsync(request, cancellationToken);
+
+        return StatusCode(statusCode, new { message });
+    }
+
+    /// ECO-69: Reset Password
+    [HttpPost("reset-password")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(object), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequestDto request, CancellationToken cancellationToken)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+
+        var (success, statusCode, message) = await _authService.ResetPasswordAsync(request, cancellationToken);
+
+        return StatusCode(statusCode, new { message });
     }
 }

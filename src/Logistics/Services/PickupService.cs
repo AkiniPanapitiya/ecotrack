@@ -10,6 +10,13 @@ public interface IPickupService
         Guid userId, CreatePickupRequestDto dto, CancellationToken cancellationToken = default);
     Task<PickupRequestDto?> GetPickupByIdAsync(Guid id, CancellationToken cancellationToken = default);
     Task<IEnumerable<PickupRequestDto>> GetPickupsByUserAsync(Guid userId, CancellationToken cancellationToken = default);
+    Task<IEnumerable<PickupRequestDto>> GetPendingPickupsAsync(CancellationToken cancellationToken = default);
+    Task<IEnumerable<PickupRequestDto>> GetRecyclerScheduleAsync(Guid recyclerId, CancellationToken cancellationToken = default);
+    Task<(bool Success, int StatusCode, string Message)> ConfirmScheduleAsync(
+        Guid pickupId, ConfirmScheduleRequestDto dto, CancellationToken cancellationToken = default);
+    Task<PickupResult> CancelPickupAsync(Guid pickupId, Guid requestingUserId, CancellationToken cancellationToken = default);
+    Task<PickupResult> ReschedulePickupAsync(Guid pickupId, DateTime newDate, Guid requestingUserId, CancellationToken cancellationToken = default);
+    Task<PickupStatusDto?> GetPickupStatusAsync(Guid id, CancellationToken cancellationToken = default);
 }
 
 public class PickupService : IPickupService
@@ -91,12 +98,15 @@ public class PickupService : IPickupService
         {
             Id = model.Id,
             UserId = model.UserId,
+            RecyclerId = model.RecyclerId,
             Category = model.Category,
             EstimatedWeightKg = model.EstimatedWeightKg,
             PickupAddress = model.PickupAddress,
             ContactPhone = model.ContactPhone,
             PreferredDate = model.PreferredDate,
+            ScheduledDate = model.ScheduledDate,
             TimeSlot = model.TimeSlot,
+            ScheduledTimeSlot = model.ScheduledTimeSlot,
             SpecialInstructions = model.SpecialInstructions,
             Status = model.Status,
             CreatedAt = model.CreatedAt,
@@ -109,6 +119,110 @@ public class PickupService : IPickupService
                 ItemCondition = i.ItemCondition,
                 EstimatedWeightKg = i.EstimatedWeightKg
             }).ToList()
+        };
+    }
+
+    public async Task<IEnumerable<PickupRequestDto>> GetPendingPickupsAsync(CancellationToken cancellationToken = default)
+    {
+        var requests = await _pickupRepository.GetPendingPickupsAsync(cancellationToken);
+        return requests.Select(MapToDto);
+    }
+
+    public async Task<IEnumerable<PickupRequestDto>> GetRecyclerScheduleAsync(Guid recyclerId, CancellationToken cancellationToken = default)
+    {
+        var requests = await _pickupRepository.GetByRecyclerIdAsync(recyclerId, cancellationToken);
+        return requests.Select(MapToDto);
+    }
+
+    public async Task<(bool Success, int StatusCode, string Message)> ConfirmScheduleAsync(
+        Guid pickupId, ConfirmScheduleRequestDto dto, CancellationToken cancellationToken = default)
+    {
+        var pickup = await _pickupRepository.GetByIdAsync(pickupId, cancellationToken);
+        if (pickup == null)
+        {
+            return (false, 404, "Pickup request not found.");
+        }
+
+        if (dto.ScheduledDate.Date < DateTime.UtcNow.Date)
+        {
+            return (false, 400, "Scheduled date cannot be in the past.");
+        }
+
+        var hasConflict = await _pickupRepository.HasConflictAsync(
+            dto.RecyclerId, dto.ScheduledDate.Date, dto.ScheduledTimeSlot, cancellationToken);
+
+        if (hasConflict)
+        {
+            return (false, 409, "This time slot is already booked.");
+        }
+
+        var updated = await _pickupRepository.ConfirmScheduleAsync(
+            pickupId, dto.RecyclerId, dto.ScheduledDate.Date, dto.ScheduledTimeSlot, cancellationToken);
+
+        if (!updated)
+        {
+            return (false, 500, "Failed to confirm schedule. Please try again.");
+        }
+
+        return (true, 200, "Pickup scheduled successfully.");
+    }
+
+    public async Task<PickupResult> CancelPickupAsync(Guid pickupId, Guid requestingUserId, CancellationToken cancellationToken = default)
+    {
+        var pickup = await _pickupRepository.GetByIdAsync(pickupId, cancellationToken);
+        if (pickup == null)
+        {
+            return PickupResult.Fail("Pickup not found");
+        }
+
+        if (pickup.UserId != requestingUserId)
+        {
+            return PickupResult.Fail("You are not authorized to modify this pickup.");
+        }
+
+        if (pickup.Status == "Collected")
+        {
+            return PickupResult.Fail("This pickup is already completed and cannot be cancelled.");
+        }
+
+        await _pickupRepository.UpdateStatusAsync(pickupId, "Cancelled", cancellationToken);
+        return PickupResult.Ok();
+    }
+
+    public async Task<PickupResult> ReschedulePickupAsync(Guid pickupId, DateTime newDate, Guid requestingUserId, CancellationToken cancellationToken = default)
+    {
+        var pickup = await _pickupRepository.GetByIdAsync(pickupId, cancellationToken);
+        if (pickup == null)
+        {
+            return PickupResult.Fail("Pickup not found");
+        }
+
+        if (pickup.UserId != requestingUserId)
+        {
+            return PickupResult.Fail("You are not authorized to modify this pickup.");
+        }
+
+        if (pickup.Status == "Collected")
+        {
+            return PickupResult.Fail("This pickup is already completed and cannot be cancelled.");
+        }
+
+        await _pickupRepository.RescheduleAsync(pickupId, newDate, cancellationToken);
+        return PickupResult.Ok();
+    }
+    public async Task<PickupStatusDto?> GetPickupStatusAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        var pickup = await _pickupRepository.GetByIdAsync(id, cancellationToken);
+        if (pickup == null)
+        {
+            return null;
+        }
+
+        return new PickupStatusDto
+        {
+            Id = pickup.Id,
+            Status = pickup.Status,
+            UpdatedAt = pickup.UpdatedAt
         };
     }
 }
