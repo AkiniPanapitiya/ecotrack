@@ -9,42 +9,40 @@ public class AuthService : IAuthService
     private readonly IUserRepository _userRepository;
     private readonly IPasswordHasher _passwordHasher;
     private readonly IJwtTokenService _jwtTokenService;
-
     private readonly ITokenBlacklistRepository _tokenBlacklistRepository;
-
     private readonly IPasswordResetTokenRepository _passwordResetTokenRepository;
+    private readonly IAuditRepository _auditRepository;
 
     public AuthService(
         IUserRepository userRepository,
         IPasswordHasher passwordHasher,
         IJwtTokenService jwtTokenService,
         ITokenBlacklistRepository tokenBlacklistRepository,
-        IPasswordResetTokenRepository passwordResetTokenRepository)
+        IPasswordResetTokenRepository passwordResetTokenRepository,
+        IAuditRepository auditRepository)
     {
         _userRepository = userRepository;
         _passwordHasher = passwordHasher;
         _jwtTokenService = jwtTokenService;
         _tokenBlacklistRepository = tokenBlacklistRepository;
         _passwordResetTokenRepository = passwordResetTokenRepository;
+        _auditRepository = auditRepository;
     }
 
     public async Task<(bool Success, int StatusCode, string Message, AuthResponseDto? Response)> RegisterAsync(
         RegisterRequestDto request, string? ipAddress = null, CancellationToken cancellationToken = default)
     {
-        // 1. Validation: password length
         if (string.IsNullOrWhiteSpace(request.Password) || request.Password.Length < 8)
         {
             return (false, 400, "Password must be at least 8 characters.", null);
         }
 
-        // 2. Duplicate email check (Scenario 3: Return 409 Conflict)
         var existingUser = await _userRepository.GetByEmailAsync(request.Email, cancellationToken);
         if (existingUser != null)
         {
             return (false, 409, "An account with this email already exists.", null);
         }
 
-        // 3. Create User record with hashed password (BCrypt work factor 11)
         var passwordHash = _passwordHasher.HashPassword(request.Password);
         var user = new User
         {
@@ -68,7 +66,6 @@ public class AuthService : IAuthService
 
         string? verificationStatus = null;
 
-        // 4. If Role is Recycler, create RecyclerProfile with default "Pending" status
         if (string.Equals(request.Role, "Recycler", StringComparison.OrdinalIgnoreCase))
         {
             verificationStatus = "Pending";
@@ -88,6 +85,15 @@ public class AuthService : IAuthService
             await _userRepository.CreateRecyclerProfileAsync(recyclerProfile, cancellationToken);
         }
 
+        await _auditRepository.LogActivityAsync(new UserAuditLog
+        {
+            UserId = user.Id,
+            UserEmail = user.Email,
+            Action = "REGISTER",
+            Role = user.Role,
+            IpAddress = ipAddress
+        }, cancellationToken);
+
         var response = new AuthResponseDto
         {
             UserId = user.Id,
@@ -104,29 +110,49 @@ public class AuthService : IAuthService
     public async Task<(bool Success, int StatusCode, string Message, AuthResponseDto? Response)> LoginAsync(
         LoginRequestDto request, string? ipAddress = null, CancellationToken cancellationToken = default)
     {
-        // 1. Fetch user by email
         var user = await _userRepository.GetByEmailAsync(request.Email, cancellationToken);
         if (user == null || !user.IsActive)
         {
+            await _auditRepository.LogActivityAsync(new UserAuditLog
+            {
+                UserEmail = request.Email,
+                Action = "LOGIN_FAILED",
+                Role = "Unknown",
+                IpAddress = ipAddress
+            }, cancellationToken);
             return (false, 401, "Invalid credentials.", null);
         }
 
-        // 2. Verify BCrypt password
         var isPasswordValid = _passwordHasher.VerifyPassword(request.Password, user.PasswordHash);
         if (!isPasswordValid)
         {
+            await _auditRepository.LogActivityAsync(new UserAuditLog
+            {
+                UserId = user.Id,
+                UserEmail = user.Email,
+                Action = "LOGIN_FAILED",
+                Role = user.Role,
+                IpAddress = ipAddress
+            }, cancellationToken);
             return (false, 401, "Invalid credentials.", null);
         }
 
-        // 3. If Recycler, fetch profile verification status
         RecyclerProfile? recyclerProfile = null;
         if (string.Equals(user.Role, "Recycler", StringComparison.OrdinalIgnoreCase))
         {
             recyclerProfile = await _userRepository.GetRecyclerProfileByUserIdAsync(user.Id, cancellationToken);
         }
 
-        // 4. Generate symmetric HMAC-SHA256 JWT token with role claims
         var (token, expiresAt) = _jwtTokenService.GenerateToken(user, recyclerProfile?.VerificationStatus);
+
+        await _auditRepository.LogActivityAsync(new UserAuditLog
+        {
+            UserId = user.Id,
+            UserEmail = user.Email,
+            Action = "LOGIN_SUCCESS",
+            Role = user.Role,
+            IpAddress = ipAddress
+        }, cancellationToken);
 
         var response = new AuthResponseDto
         {
@@ -142,6 +168,7 @@ public class AuthService : IAuthService
 
         return (true, 200, "Login successful.", response);
     }
+
     public async Task<(bool Success, int StatusCode, string Message)> LogoutAsync(
         string jti, Guid userId, DateTime tokenExpiresAt, CancellationToken cancellationToken = default)
     {
@@ -155,24 +182,20 @@ public class AuthService : IAuthService
     }
 
     public async Task<(bool Success, int StatusCode, string Message)> ForgotPasswordAsync(
-    ForgotPasswordRequestDto request, CancellationToken cancellationToken = default)
+        ForgotPasswordRequestDto request, CancellationToken cancellationToken = default)
     {
         const string genericMessage = "Check your email for reset instructions.";
 
         var user = await _userRepository.GetByEmailAsync(request.Email, cancellationToken);
 
-        // Security: always return the same success message, whether the email
-        // exists or not — never reveal which emails are registered.
         if (user == null)
         {
             return (true, 200, genericMessage);
         }
 
-        // Generate a random, unguessable raw token (this is what goes in the email link)
         var rawToken = Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32))
             .Replace("+", "-").Replace("/", "_").Replace("=", "");
 
-        // Hash it before storing — same principle as ECO-63's blacklist
         var tokenHash = System.Security.Cryptography.SHA256.HashData(
             System.Text.Encoding.UTF8.GetBytes(rawToken));
         var tokenHashHex = Convert.ToHexString(tokenHash);
@@ -185,8 +208,6 @@ public class AuthService : IAuthService
             return (false, 500, "Something went wrong. Please try again.");
         }
 
-        // replace with real email sending once an email service exists.
-        // For now, log the link so it can be tested manually.
         var resetLink = $"http://localhost:5173/reset-password?token={rawToken}&email={user.Email}";
         Console.WriteLine($"[Password Reset] Link for {user.Email}: {resetLink}");
 
@@ -196,7 +217,6 @@ public class AuthService : IAuthService
     public async Task<(bool Success, int StatusCode, string Message)> ResetPasswordAsync(
         ResetPasswordRequestDto request, CancellationToken cancellationToken = default)
     {
-        // Hash the incoming raw token the same way we hashed it when creating it
         var tokenHashBytes = System.Security.Cryptography.SHA256.HashData(
             System.Text.Encoding.UTF8.GetBytes(request.Token));
         var tokenHashHex = Convert.ToHexString(tokenHashBytes);
@@ -227,5 +247,4 @@ public class AuthService : IAuthService
 
         return (true, 200, "Password reset successful. Please log in.");
     }
-
 }

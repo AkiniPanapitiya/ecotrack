@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { logisticsApi } from '../services/api';
-import { Calendar, Clock, AlertCircle, CheckCircle, Truck } from 'lucide-react';
+import { Calendar, Clock, AlertCircle, CheckCircle, Truck, MapPin, Phone, Scale, MessageSquare } from 'lucide-react';
 
 const TIME_SLOTS = [
   'Morning (09:00 - 12:00)',
@@ -29,12 +29,13 @@ export const ScheduleManagementView = () => {
       setMyPickups(mineRes.data);
 
       const initialSlots = {};
-      pendingRes.data.forEach(p => {
+      pendingRes.data.forEach((p) => {
         initialSlots[p.id] = {
-          date: p.preferredDate?.split('T')[0],
-          timeSlot: p.timeSlot,
+          date: p.preferredDate?.split('T')[0] || '',
+          timeSlot: p.timeSlot || '',
         };
       });
+      setSelectedSlot(initialSlots);
     } catch (err) {
       console.error('Failed to load schedule data', err);
     } finally {
@@ -47,7 +48,7 @@ export const ScheduleManagementView = () => {
   }, []);
 
   const handleSlotChange = (pickupId, field, value) => {
-    setSelectedSlot(prev => ({
+    setSelectedSlot((prev) => ({
       ...prev,
       [pickupId]: { ...prev[pickupId], [field]: value },
     }));
@@ -71,7 +72,7 @@ export const ScheduleManagementView = () => {
         scheduledTimeSlot: slot.timeSlot,
       });
       setSuccessMessage('Pickup scheduled successfully.');
-      loadData(); // refresh both lists so the confirmed pickup moves to "My Schedule"
+      loadData();
     } catch (err) {
       if (err.response?.status === 409) {
         setConflictWarning('This time slot is already booked.');
@@ -82,7 +83,7 @@ export const ScheduleManagementView = () => {
   };
 
   if (loading) {
-    return <div style={{ textAlign: 'center', padding: '3rem' }}>Loading schedule...</div>;
+    return <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>Loading schedule...</div>;
   }
 
   return (
@@ -98,58 +99,109 @@ export const ScheduleManagementView = () => {
         <div className="alert alert-danger"><AlertCircle size={18} /><span>{conflictWarning}</span></div>
       )}
 
-      {/* --- My confirmed schedule, sorted by date --- */}
       <div className="glass-card" style={{ marginBottom: '2rem' }}>
-        <h2 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '1rem' }}>
-          <Truck size={20} style={{ marginRight: '8px' }} />
+        <h2 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Truck size={20} style={{ color: 'var(--primary)' }} />
           My Schedule
         </h2>
         {myPickups.length === 0 && <p style={{ color: 'var(--text-secondary)' }}>No pickups scheduled yet.</p>}
-        {myPickups.map(pickup => (
-          <div key={pickup.id} style={{ padding: '1rem', borderBottom: '1px solid var(--border-color, #333)' }}>
+        {myPickups.map((pickup) => (
+          <div key={pickup.id} style={{ padding: '1rem 0', borderBottom: '1px solid var(--border-color, #333)' }}>
             <strong>{pickup.category}</strong> — {pickup.pickupAddress}
-            <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '0.25rem' }}>
-              <Calendar size={14} style={{ marginRight: '4px' }} />
+            <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '0.25rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Calendar size={14} />
               {new Date(pickup.scheduledDate).toLocaleDateString()} — {pickup.scheduledTimeSlot}
             </div>
           </div>
         ))}
       </div>
 
-      {/* --- Unscheduled pickups available to claim --- */}
       <div className="glass-card">
-        <h2 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '1rem' }}>
+        <h2 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '1.25rem' }}>
           Pending Pickups
         </h2>
         {pendingPickups.length === 0 && <p style={{ color: 'var(--text-secondary)' }}>No pending pickups right now.</p>}
-        {pendingPickups.map(pickup => (
-          <div key={pickup.id} style={{ padding: '1rem', borderBottom: '1px solid var(--border-color, #333)' }}>
-            <strong>{pickup.category}</strong> — {pickup.pickupAddress}
-            <div style={{ display: 'flex', gap: '1rem', marginTop: '0.75rem', flexWrap: 'wrap' }}>
-              <input
-                type="date"
-                className="form-input"
-                style={{ width: 'auto' }}
-                defaultValue={pickup.scheduledDate?.split('T')[0]}
-                onChange={(e) => handleSlotChange(pickup.id, 'date', e.target.value)}
-              />
-              <select
-                className="form-input"
-                style={{ width: 'auto' }}
-                defaultValue={pickup.timeSlot}
-                onChange={(e) => handleSlotChange(pickup.id, 'timeSlot', e.target.value)}
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          {pendingPickups.map((pickup) => (
+            <div
+              key={pickup.id}
+              style={{
+                padding: '1.25rem',
+                background: 'rgba(255,255,255,0.03)',
+                border: '1px solid var(--border-color, #333)',
+                borderRadius: 'var(--radius-md)',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem' }}>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 700 }}>{pickup.category}</h3>
+                <span className="badge badge-pending">
+                  <Scale size={12} />
+                  {pickup.estimatedWeightKg} kg
+                </span>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: '0.75rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <MapPin size={14} />
+                  {pickup.pickupAddress}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Phone size={14} />
+                  {pickup.contactPhone}
+                </div>
+                {pickup.specialInstructions && (
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px' }}>
+                    <MessageSquare size={14} style={{ marginTop: '2px', flexShrink: 0 }} />
+                    <span>{pickup.specialInstructions}</span>
+                  </div>
+                )}
+              </div>
+
+              <div
+                style={{
+                  marginTop: '0.9rem',
+                  padding: '0.6rem 0.9rem',
+                  background: 'rgba(6, 182, 212, 0.1)',
+                  border: '1px solid rgba(6, 182, 212, 0.25)',
+                  borderRadius: 'var(--radius-sm)',
+                  fontSize: '0.85rem',
+                  color: 'var(--accent)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                }}
               >
-                <option value="">Select time slot</option>
-                {TIME_SLOTS.map(slot => (
-                  <option key={slot} value={slot}>{slot}</option>
-                ))}
-              </select>
-              <button className="btn btn-primary" onClick={() => handleConfirm(pickup.id)}>
-                <Clock size={16} /> Confirm
-              </button>
+                <Calendar size={14} />
+                Customer requested: {new Date(pickup.preferredDate).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} — {pickup.timeSlot}
+              </div>
+
+              <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                <input
+                  type="date"
+                  className="form-input"
+                  style={{ width: 'auto' }}
+                  value={selectedSlot[pickup.id]?.date || ''}
+                  onChange={(e) => handleSlotChange(pickup.id, 'date', e.target.value)}
+                />
+                <select
+                  className="form-input"
+                  style={{ width: 'auto' }}
+                  value={selectedSlot[pickup.id]?.timeSlot || ''}
+                  onChange={(e) => handleSlotChange(pickup.id, 'timeSlot', e.target.value)}
+                >
+                  <option value="">Select time slot</option>
+                  {TIME_SLOTS.map((slot) => (
+                    <option key={slot} value={slot}>{slot}</option>
+                  ))}
+                </select>
+                <button className="btn btn-primary" onClick={() => handleConfirm(pickup.id)}>
+                  <Clock size={16} /> Confirm
+                </button>
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     </div>
   );

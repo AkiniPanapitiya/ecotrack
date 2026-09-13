@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { useAuth } from './context/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Navbar } from './components/Navbar';
 import { RegisterView } from './views/RegisterView';
@@ -11,6 +12,13 @@ import { DashboardView } from './views/DashboardView';
 import { ForgotPasswordView } from './views/ForgotPasswordView'; 
 import { ResetPasswordView } from './views/ResetPasswordView';
 import { ScheduleManagementView } from './views/ScheduleManagementView';
+import  MyPickupsView  from './views/MyPickupsView';
+import { AuditReportView } from './views/AuditReportView';
+
+const HomeRedirect = () => {
+  const { isAuthenticated } = useAuth();
+  return <Navigate to={isAuthenticated ? '/dashboard' : '/register'} replace />;
+};
 
 export const App = () => {
   return (
@@ -20,7 +28,6 @@ export const App = () => {
           <Navbar />
           <main className="main-content">
             <Routes>
-              <Route path="/" element={<Navigate to="/register" replace />} />
               <Route path="/register" element={<RegisterView />} />
               <Route path="/login" element={<LoginView />} />
               <Route path="/dashboard" element={<ProtectedRoute><DashboardView /></ProtectedRoute>} />
@@ -28,8 +35,10 @@ export const App = () => {
               <Route path="/pickup" element={<ProtectedRoute><PickupBookingView /></ProtectedRoute>} />
               <Route path="/forgot-password" element={<ForgotPasswordView />} />
               <Route path="/reset-password" element={<ResetPasswordView />} />
-              <Route path="/schedule" element={<ProtectedRoute rolesAllowed={['recycler']}><ScheduleManagementView /></ProtectedRoute>} />
-              <Route path="*" element={<Navigate to="/register" replace />} />
+              <Route path="/schedule" element={<ProtectedRoute rolesAllowed={['Recycler']}><ScheduleManagementView /></ProtectedRoute>} />
+              <Route path="/my-pickups" element={<ProtectedRoute><MyPickupsView /></ProtectedRoute>} />
+              <Route path="/audit-report" element={<ProtectedRoute><AuditReportView /></ProtectedRoute>} />
+              <Route path="/" element={<HomeRedirect />} />
             </Routes>
           </main>
         </div>
