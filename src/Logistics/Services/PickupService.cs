@@ -16,6 +16,7 @@ public interface IPickupService
         Guid pickupId, ConfirmScheduleRequestDto dto, CancellationToken cancellationToken = default);
     Task<PickupResult> CancelPickupAsync(Guid pickupId, Guid requestingUserId, CancellationToken cancellationToken = default);
     Task<PickupResult> ReschedulePickupAsync(Guid pickupId, DateTime newDate, Guid requestingUserId, CancellationToken cancellationToken = default);
+    Task<PickupStatusDto?> GetPickupStatusAsync(Guid id, CancellationToken cancellationToken = default);
 }
 
 public class PickupService : IPickupService
@@ -208,5 +209,20 @@ public class PickupService : IPickupService
 
         await _pickupRepository.RescheduleAsync(pickupId, newDate, cancellationToken);
         return PickupResult.Ok();
+    }
+    public async Task<PickupStatusDto?> GetPickupStatusAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        var pickup = await _pickupRepository.GetByIdAsync(id, cancellationToken);
+        if (pickup == null)
+        {
+            return null;
+        }
+
+        return new PickupStatusDto
+        {
+            Id = pickup.Id,
+            Status = pickup.Status,
+            UpdatedAt = pickup.UpdatedAt
+        };
     }
 }

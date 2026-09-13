@@ -129,4 +129,19 @@ public class PickupController : ControllerBase
         return Ok(new { message = "Pickup rescheduled" });
     }
 
+    //ECO-82 Get pickup status
+    [HttpGet("{id:guid}/status")]
+    [ProducesResponseType(typeof(PickupStatusDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetPickupStatus(Guid id, CancellationToken cancellationToken)
+    {
+        var status = await _pickupService.GetPickupStatusAsync(id, cancellationToken);
+        if (status == null)
+        {
+            return NotFound(new { message = "Pickup request not found." });
+        }
+
+        return Ok(status);
+    }
+
 }
