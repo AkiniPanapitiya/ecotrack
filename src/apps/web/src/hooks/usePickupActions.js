@@ -46,6 +46,7 @@ export function usePickupActions() {
   const getMyPickups = async (userId) => {
     const res = await fetch(`/api/pickup/user/${userId}`, {
       headers: { ...authHeaders() },
+      cache: "no-store",
     });
     if (!res.ok) {
       throw new Error(`Failed to load pickups (${res.status})`);

@@ -12,8 +12,12 @@ function PickupCard({ pickup, onCancel, onReschedule }) {
   const [newDate, setNewDate] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [confirmingCancel, setConfirmingCancel] = useState(false);
 
   const canModify = pickup.status !== 'Collected' && pickup.status !== 'Cancelled';
+  const wasAdjusted = pickup.status === 'Scheduled' &&
+  (pickup.scheduledDate?.split('T')[0] !== pickup.preferredDate?.split('T')[0] ||
+    pickup.scheduledTimeSlot !== pickup.timeSlot);
   const badgeStyle = statusStyles[pickup.status] || statusStyles.Requested;
 
   const formattedDate = pickup.scheduledDate
@@ -58,15 +62,22 @@ function PickupCard({ pickup, onCancel, onReschedule }) {
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '0.15rem' }}>
             {formattedDate}
           </p>
+          {pickup.status === 'Scheduled' && (
+            <p style={{ fontSize: '0.8rem', marginTop: '0.3rem', color: wasAdjusted ? 'var(--warning)' : 'var(--primary)' }}>
+              {wasAdjusted
+                ? `Recycler adjusted your requested time (you asked for ${new Date(pickup.preferredDate).toLocaleDateString()} — ${pickup.timeSlot})`
+                : 'Confirmed as requested'}
+            </p>
+          )}
         </div>
 
         {canModify && (
           <div style={{ display: 'flex', gap: '0.6rem' }}>
             <button
               className="btn btn-secondary"
-              onClick={handleCancel}
+              onClick={() => setConfirmingCancel(true)}
               disabled={busy}
-              style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }}
+              style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', color: 'var(--danger)', borderColor: 'rgba(239, 68, 68, 0.4)' }}
             >
               Cancel
             </button>
@@ -104,6 +115,29 @@ function PickupCard({ pickup, onCancel, onReschedule }) {
           >
             Confirm
           </button>
+        </div>
+      )}
+
+      {confirmingCancel && (
+        <div className="alert alert-danger" style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          <span>Cancel this pickup? This can't be undone.</span>
+          <div style={{ display: 'flex', gap: '0.6rem' }}>
+            <button
+              className="btn btn-primary"
+              style={{ background: 'var(--danger)', padding: '0.5rem 1rem', fontSize: '0.85rem' }}
+              onClick={() => { setConfirmingCancel(false); handleCancel(); }}
+              disabled={busy}
+            >
+              Yes, cancel it
+            </button>
+            <button
+              className="btn btn-secondary"
+              style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }}
+              onClick={() => setConfirmingCancel(false)}
+            >
+              Never mind
+            </button>
+          </div>
         </div>
       )}
 

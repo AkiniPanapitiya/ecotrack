@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { Leaf, User, Shield, LogOut, FileText, LayoutDashboard, Building2, Truck, PackageSearch } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { Leaf, User, Shield, LogOut, FileText, LayoutDashboard, Building2, Truck, PackageSearch} from 'lucide-react';
 
 export const Navbar = () => {
   const { user, isAuthenticated, logout } = useAuth();
@@ -27,15 +27,19 @@ export const Navbar = () => {
               <span>Dashboard</span>
             </Link>
 
+          {user?.role === 'User' && (
             <Link to="/pickup" className="nav-link" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <Truck size={18} />
               <span>Book Pickup</span>
             </Link>
+          )}
 
-            <Link to="/my-pickups" className="nav-link" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          {user?.role === 'User' && (
+          <Link to="/my-pickups" className="nav-link" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <PackageSearch size={18} />
               <span>My Pickups</span>
-            </Link>
+          </Link>
+          )}
             
             {user?.role === 'Recycler' && (
               <Link to="/schedule" className="nav-link" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>

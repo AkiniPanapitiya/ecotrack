@@ -4,7 +4,7 @@ import PickupCard from '../components/PickupCard';
 import { usePickupActions } from '../hooks/usePickupActions';
 import { PackageSearch } from 'lucide-react';
 
-export const MyPickupsView = () => {
+function MyPickupsView() {
   const { user } = useAuth();
   const { cancelPickup, reschedulePickup, getMyPickups } = usePickupActions();
 
@@ -18,7 +18,12 @@ export const MyPickupsView = () => {
       setLoading(true);
       setError('');
       const data = await getMyPickups(user.userId);
-      setPickups(data);
+      const sorted = [...data].sort((a, b) => {
+        const dateA = new Date(a.scheduledDate || a.preferredDate);
+        const dateB = new Date(b.scheduledDate || b.preferredDate);
+        return dateA - dateB;
+      });
+        setPickups(sorted);
     } catch (err) {
       console.error('Failed to load pickups:', err);
       setError('Could not load your pickups. Please try again later.');
@@ -72,6 +77,6 @@ export const MyPickupsView = () => {
       )}
     </div>
   );
-};
+}
 
 export default MyPickupsView;

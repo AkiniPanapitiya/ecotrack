@@ -46,6 +46,10 @@ export const profileApi = {
   updateProfile: (data) => api.put('/profile', data),
 };
 
+export const auditApi = {
+  getReport: (params) => api.get('/audit/report', { params }),
+};
+
 // ECO-15: Logistics Pickup Booking Endpoints
 export const logisticsApi = {
   createPickup: (data) => logisticsClient.post('/pickup', data),
