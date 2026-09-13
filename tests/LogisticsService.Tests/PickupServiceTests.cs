@@ -308,4 +308,62 @@ public class PickupServiceTests
 
         Assert.False(result.Success);
     }
+    
+    [Fact]
+    public async Task GetPickupStatusAsync_ExistingPickup_ReturnsStatus()
+    {
+        var pickupId = Guid.NewGuid();
+        var pickup = new PickupRequest { Id = pickupId, Status = "Scheduled", UpdatedAt = DateTime.UtcNow };
+
+        _pickupRepoMock.Setup(r => r.GetByIdAsync(pickupId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(pickup);
+
+        var result = await _pickupService.GetPickupStatusAsync(pickupId);
+
+        Assert.NotNull(result);
+        Assert.Equal("Scheduled", result.Status);
+    }
+
+    [Fact]
+    public async Task GetPickupStatusAsync_NotFound_ReturnsNull()
+    {
+        var pickupId = Guid.NewGuid();
+        _pickupRepoMock.Setup(r => r.GetByIdAsync(pickupId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((PickupRequest?)null);
+
+        var result = await _pickupService.GetPickupStatusAsync(pickupId);
+
+        Assert.Null(result);
+    }
+    [Theory]
+    [InlineData("Requested")]
+    [InlineData("Scheduled")]
+    [InlineData("Collected")]
+    public async Task GetPickupStatusAsync_ReturnsCorrectStatus_ForEachStage(string status)
+    {
+        var pickupId = Guid.NewGuid();
+        var pickup = new PickupRequest { Id = pickupId, Status = status, UpdatedAt = DateTime.UtcNow };
+
+        _pickupRepoMock.Setup(r => r.GetByIdAsync(pickupId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(pickup);
+
+        var result = await _pickupService.GetPickupStatusAsync(pickupId);
+
+        Assert.NotNull(result);
+        Assert.Equal(status, result.Status);
+    }
+
+    // Covers Scenario 3: no pickups yet -> empty list, not an error
+    [Fact]
+    public async Task GetPickupsByUserAsync_NoPickups_ReturnsEmptyList()
+    {
+        var userId = Guid.NewGuid();
+
+        _pickupRepoMock.Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<PickupRequest>());
+
+        var result = await _pickupService.GetPickupsByUserAsync(userId);
+
+        Assert.Empty(result);
+    }
 }
