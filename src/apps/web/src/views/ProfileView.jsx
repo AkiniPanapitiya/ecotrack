@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { authApi } from '../services/api';
+import { profileApi } from '../services/api';
 import { User, Mail, Phone, MapPin, Building2, Shield, CheckCircle2, AlertCircle, Save, Clock } from 'lucide-react';
 
 export const ProfileView = () => {
@@ -29,7 +29,7 @@ export const ProfileView = () => {
   const loadProfile = async () => {
     setLoading(true);
     try {
-      const res = await authApi.getProfile();
+      const res = await profileApi.getProfile();
       setProfile(res.data);
       setFormData({
         fullName: res.data.fullName || '',
@@ -83,7 +83,7 @@ export const ProfileView = () => {
         operationalCapacityKg: formData.operationalCapacityKg ? parseFloat(formData.operationalCapacityKg) : null
       };
 
-      const res = await authApi.updateProfile(payload);
+      const res = await profileApi.updateProfile(payload);
       setProfile(res.data.profile);
       setSuccessMessage(res.data.message || 'Profile updated successfully.');
       await refreshProfile();
