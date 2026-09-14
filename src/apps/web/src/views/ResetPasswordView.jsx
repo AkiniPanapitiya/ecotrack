@@ -6,13 +6,16 @@ import { Leaf, Lock, AlertCircle, CheckCircle, ArrowRight } from 'lucide-react';
 export const ResetPasswordView = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const token = searchParams.get('token') || '';
+  const urlToken = searchParams.get('token') || '';
 
+  const [manualToken, setManualToken] = useState('');
   const [formData, setFormData] = useState({ newPassword: '', confirmPassword: '' });
   const [errors, setErrors] = useState({});
   const [serverError, setServerError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const effectiveToken = urlToken || manualToken.trim();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -21,8 +24,17 @@ export const ResetPasswordView = () => {
     setServerError('');
   };
 
+  const handleTokenChange = (e) => {
+    setManualToken(e.target.value);
+    if (errors.token) setErrors(prev => ({ ...prev, token: '' }));
+    setServerError('');
+  };
+
   const validate = () => {
     const newErrors = {};
+    if (!effectiveToken) {
+      newErrors.token = 'Please enter your reset token.';
+    }
     if (!formData.newPassword) {
       newErrors.newPassword = 'New password is required.';
     } else if (formData.newPassword.length < 8) {
@@ -38,16 +50,12 @@ export const ResetPasswordView = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setServerError('');
-    if (!token) {
-      setServerError('This reset link is invalid or has expired.');
-      return;
-    }
     if (!validate()) return;
 
     setLoading(true);
     try {
       const response = await authApi.resetPassword({
-        token,
+        token: effectiveToken,
         newPassword: formData.newPassword,
         confirmPassword: formData.confirmPassword,
       });
@@ -91,6 +99,22 @@ export const ResetPasswordView = () => {
 
         {!successMessage && (
           <form onSubmit={handleSubmit}>
+            {!urlToken && (
+              <div className="form-group">
+                <label className="form-label">Reset Token</label>
+                <input
+                  type="text"
+                  name="resetToken"
+                  className="form-input"
+                  placeholder="Paste the token from your reset email"
+                  value={manualToken}
+                  onChange={handleTokenChange}
+                  autoComplete="off"
+                />
+                {errors.token && <div className="form-error"><AlertCircle size={14} />{errors.token}</div>}
+              </div>
+            )}
+
             <div className="form-group">
               <label className="form-label">New Password</label>
               <input

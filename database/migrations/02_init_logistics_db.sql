@@ -41,7 +41,7 @@ CREATE TABLE IF NOT EXISTS `PickupItems` (
     INDEX `idx_item_request` (`PickupRequestId`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
---3.Pickup request table
+-- 3.Pickup request table
 CREATE TABLE IF NOT EXISTS `PickupRequests` (
     `Id` VARCHAR(36) NOT NULL PRIMARY KEY,
     `UserId` VARCHAR(36) NOT NULL,

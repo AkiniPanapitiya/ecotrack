@@ -86,7 +86,7 @@ CREATE TABLE IF NOT EXISTS `UserFeedback` (
     INDEX `idx_feedback_recycler` (`RecyclerId`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
---6. Backlisted Tokens table
+-- 6. Backlisted Tokens table
 CREATE TABLE IF NOT EXISTS `BlacklistedTokens` (
     `Id` VARCHAR(36) NOT NULL PRIMARY KEY,
     `Jti` VARCHAR(100) NOT NULL UNIQUE,  
