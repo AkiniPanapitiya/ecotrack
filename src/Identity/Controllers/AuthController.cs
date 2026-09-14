@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using System.IdentityModel.Tokens.Jwt;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authentication;
 
 namespace EcoTrack.IdentityService.Controllers;
 
@@ -77,14 +78,19 @@ public class AuthController : ControllerBase
     {
         var jti = User.FindFirstValue(JwtRegisteredClaimNames.Jti);
         var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        var expClaim = User.FindFirstValue(JwtRegisteredClaimNames.Exp);
 
-        if (string.IsNullOrEmpty(jti) || string.IsNullOrEmpty(userIdClaim) || string.IsNullOrEmpty(expClaim))
+        if (string.IsNullOrEmpty(jti) || string.IsNullOrEmpty(userIdClaim))
         {
             return Unauthorized(new { message = "Invalid token." });
         }
 
-        var expiresAt = DateTimeOffset.FromUnixTimeSeconds(long.Parse(expClaim)).UtcDateTime;
+        var accessToken = await HttpContext.GetTokenAsync("access_token");
+        if (string.IsNullOrEmpty(accessToken))
+        {
+            return Unauthorized(new { message = "Invalid token." });
+        }
+
+        var expiresAt = new JwtSecurityTokenHandler().ReadJwtToken(accessToken).ValidTo;
         var (success, statusCode, message) = await _authService.LogoutAsync(
             jti, Guid.Parse(userIdClaim), expiresAt, cancellationToken);
 
