@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
+import {useNavigate} from 'react-router-dom';
 import { authApi } from '../services/api';
 import { Leaf, User, Building2, AlertCircle, CheckCircle2, ArrowRight } from 'lucide-react';
 
 export const RegisterView = () => {
+  const navigate = useNavigate();
   const [role, setRole] = useState('User'); // 'User' or 'Recycler'
   const [formData, setFormData] = useState({
     fullName: '',
@@ -122,6 +124,9 @@ export const RegisterView = () => {
     try {
       const response = await authApi.register(payload);
       setSuccessMessage(response.data.message || 'Account created successfully. Please log in.');
+      setTimeout(() => {
+        navigate('/login');
+      }, 2000);
     } catch (error) {
       const msg = error.response?.data?.message || 'Registration failed. Please check your inputs.';
       setServerError(msg);
