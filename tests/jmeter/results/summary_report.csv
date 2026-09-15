@@ -1,0 +1,7 @@
+sampler_label,aggregate_report_count,average,aggregate_report_median,aggregate_report_90%_line,aggregate_report_min,aggregate_report_max,aggregate_report_error%,aggregate_report_rate
+"POST /api/Auth/login",100,331,325,454,124,669,0.00%,48.15
+"POST /api/Auth/forgot-password",100,32,7,157,0,206,0.00%,48.15
+"GET /identity/health",100,5,1,10,0,116,0.00%,48.15
+"GET /api/Pickup/user/5c0cec89-567f-42cb-819f-8aee0cf9cd52",100,5,2,13,0,20,0.00%,48.15
+"GET /api/Pickup/a1111111-1111-1111-1111-111111111111/status",100,5,3,11,0,21,0.00%,48.15
+"GET /logistics/health",100,2,1,6,0,11,0.00%,48.15
