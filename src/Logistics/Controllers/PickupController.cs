@@ -119,7 +119,7 @@ public class PickupController : ControllerBase
         if (!result.Success) return BadRequest(new { message = result.Error });
         return Ok(new { message = "Pickup cancelled" });
     }
-    [HttpPost("{id}/reschedule")]
+        [HttpPost("{id}/reschedule")]
     [Authorize(Roles = "User")]
     public async Task<IActionResult> Reschedule(Guid id, [FromBody] RescheduleRequest request)
     {
@@ -127,6 +127,16 @@ public class PickupController : ControllerBase
         var result = await _pickupService.ReschedulePickupAsync(id, request.NewDate, userId);
         if (!result.Success) return BadRequest(new { message = result.Error });
         return Ok(new { message = "Pickup rescheduled" });
+    }
+
+    [HttpPost("{id}/collect")]
+    [Authorize(Roles = "Recycler")]
+    public async Task<IActionResult> MarkAsCollected(Guid id)
+    {
+        var recyclerId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        var result = await _pickupService.MarkAsCollectedAsync(id, recyclerId);
+        if (!result.Success) return BadRequest(new { message = result.Error });
+        return Ok(new { message = "Pickup marked as collected." });
     }
 
     //ECO-82 Get pickup status

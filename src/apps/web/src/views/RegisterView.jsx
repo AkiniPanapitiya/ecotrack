@@ -57,6 +57,12 @@ export const RegisterView = () => {
       case 'facilityAddress':
         if (role === 'Recycler' && !value.trim()) return 'Facility address is required.';
         return '';
+      
+            case 'phoneNumber':
+        if (value.trim() && !/^\d{10}$/.test(value.trim())) {
+          return 'Phone number must be exactly 10 digits.';
+        }
+        return '';
 
       default:
         return '';
@@ -64,7 +70,7 @@ export const RegisterView = () => {
   };
 
   const validateForm = () => {
-    const fieldsToCheck = ['fullName', 'email', 'password', 'confirmPassword'];
+    const fieldsToCheck = ['fullName', 'email', 'password', 'confirmPassword', 'phoneNumber'];
     if (role === 'Recycler') {
       fieldsToCheck.push('companyName', 'businessRegistrationNumber', 'facilityAddress');
     }
@@ -96,6 +102,16 @@ export const RegisterView = () => {
     const { name, value } = e.target;
     const message = validateField(name, value, formData);
     setErrors(prev => ({ ...prev, [name]: message }));
+  };
+
+    const handlePhoneChange = (e) => {
+    const digitsOnly = e.target.value.replace(/\D/g, '').slice(0, 10);
+    const updated = { ...formData, phoneNumber: digitsOnly };
+    setFormData(updated);
+    if (errors.phoneNumber) {
+      setErrors(prev => ({ ...prev, phoneNumber: '' }));
+    }
+    setServerError('');
   };
 
   const handleSubmit = async (e) => {
@@ -262,12 +278,17 @@ export const RegisterView = () => {
               <label className="form-label">Phone Number</label>
               <input
                 type="tel"
+                inputMode="numeric"
                 name="phoneNumber"
                 className="form-input"
-                placeholder="+94 77 123 4567"
+                placeholder="0771234567"
+                maxLength={10}
                 value={formData.phoneNumber}
-                onChange={handleChange}
+                onChange={handlePhoneChange}
+                onBlur={handleBlur}
               />
+              {errors.phoneNumber && <div className="form-error"><AlertCircle size={14} />{errors.phoneNumber}
+              </div>}
             </div>
 
             <div className="form-group">

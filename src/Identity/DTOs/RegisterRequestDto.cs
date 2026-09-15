@@ -20,6 +20,7 @@ public class RegisterRequestDto
     [RegularExpression("^(User|Recycler|Admin|Driver)$", ErrorMessage = "Role must be User, Recycler, Admin, or Driver.")]
     public string Role { get; set; } = "User";
 
+    [RegularExpression(@"^\d{10}$", ErrorMessage = "Phone number must be exactly 10 digits.")]
     public string? PhoneNumber { get; set; }
     public string? Address { get; set; }
 

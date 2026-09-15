@@ -48,15 +48,12 @@ export const Navbar = () => {
               </Link>
             )}
 
-            <Link to="/profile" className="nav-link" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <User size={18} />
-              <span>Profile</span>
-            </Link>
-
-            <Link to="/audit-report" className="nav-link" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <FileText size={18} />
-              <span>Audit Report</span>
-            </Link>
+                        {user?.role === 'Admin' && (
+              <Link to="/audit-report" className="nav-link" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <FileText size={18} />
+                <span>Audit Report</span>
+              </Link>
+            )}
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginLeft: '12px', borderLeft: '1px solid var(--border-color)', paddingLeft: '16px' }}>
               <span className={`badge ${user?.role === 'Recycler' ? 'badge-recycler' : 'badge-user'}`}>
@@ -64,13 +61,17 @@ export const Navbar = () => {
                 {user?.role}
               </span>
 
-              <span style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-                {user?.fullName}
-              </span>
+              <Link
+                to="/profile"
+                style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)' }}
+              >
+                <User size={16} />
+                <span>Profile</span>
+              </Link>
 
               <button
                 onClick={handleLogout}
-                className="btn btn-secondary"
+                className="btn btn-logout"
                 style={{ padding: '0.45rem 0.85rem', fontSize: '0.85rem' }}
                 title="Log out"
               >

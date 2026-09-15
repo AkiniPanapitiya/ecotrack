@@ -54,6 +54,8 @@ export const PickupBookingView = () => {
 
     if (!formData.contactPhone.trim()) {
       newErrors.contactPhone = 'Contact phone number is required.';
+    } else if (!/^\d{10}$/.test(formData.contactPhone.trim())) {
+      newErrors.contactPhone = 'Contact phone number must be exactly 10 digits.';
     }
 
     if (!formData.preferredDate) {
@@ -80,6 +82,15 @@ export const PickupBookingView = () => {
     setFormData(prev => ({ ...prev, [name]: value }));
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
+    }
+    setServerError('');
+  };
+
+  const handlePhoneChange = (e) => {
+    const digitsOnly = e.target.value.replace(/\D/g, '').slice(0, 10);
+    setFormData(prev => ({ ...prev, contactPhone: digitsOnly }));
+    if (errors.contactPhone) {
+      setErrors(prev => ({ ...prev, contactPhone: '' }));
     }
     setServerError('');
   };
@@ -209,12 +220,14 @@ export const PickupBookingView = () => {
                 <Phone size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
                 <input
                   type="tel"
+                  inputMode="numeric"
                   name="contactPhone"
                   className="form-input"
                   style={{ paddingLeft: '38px' }}
-                  placeholder="+94 77 123 4567"
+                  placeholder="0771234567"
+                  maxLength={10}
                   value={formData.contactPhone}
-                  onChange={handleChange}
+                  onChange={handlePhoneChange}
                 />
               </div>
               {errors.contactPhone && <div className="form-error"><AlertCircle size={14} />{errors.contactPhone}</div>}
