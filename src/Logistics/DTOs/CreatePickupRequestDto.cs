@@ -15,7 +15,7 @@ public class CreatePickupRequestDto
     public string PickupAddress { get; set; } = string.Empty;
 
     [Required(ErrorMessage = "Contact phone is required.")]
-    [Phone(ErrorMessage = "Invalid phone number format.")]
+    [RegularExpression(@"^\d{10}$", ErrorMessage = "Contact phone must be exactly 10 digits.")]
     public string ContactPhone { get; set; } = string.Empty;
 
     [Required(ErrorMessage = "Preferred date is required.")]

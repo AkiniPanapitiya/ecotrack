@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Leaf, User, ShieldCheck, FileText, ArrowRight, Building2, Clock, CheckCircle2 } from 'lucide-react';
+import { Leaf, User, ShieldCheck, FileText, ArrowRight, Building2, Clock, CheckCircle2, Truck, PackageSearch, Shield } from 'lucide-react';
 
 export const DashboardView = () => {
   const { user } = useAuth();
@@ -41,21 +41,60 @@ export const DashboardView = () => {
 
       {/* Feature Navigation Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
-        <div className="glass-card">
-          <div style={{ display: 'inline-flex', padding: '10px', borderRadius: '12px', background: 'var(--primary-light)', color: 'var(--primary)', marginBottom: '1rem' }}>
-            <ShieldCheck size={24} />
+
+        {user?.role === 'User' && (
+          <div className="glass-card">
+            <div style={{ display: 'inline-flex', padding: '10px', borderRadius: '12px', background: 'rgba(16, 185, 129, 0.15)', color: 'var(--primary)', marginBottom: '1rem' }}>
+              <Truck size={24} />
+            </div>
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '0.5rem' }}>
+              Book Pickup
+            </h3>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '1.25rem' }}>
+              Schedule a new e-waste pickup with item details, weight, and your preferred time slot.
+            </p>
+            <Link to="/pickup" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: 'var(--primary)', fontSize: '0.9rem', fontWeight: 600 }}>
+              <span>Book a Pickup</span>
+              <ArrowRight size={16} />
+            </Link>
           </div>
-          <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '0.5rem' }}>
-            Authentication & RBAC
-          </h3>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '1.25rem' }}>
-            Multi-tenant identity protection with BCrypt password hashing and JWT claims validation.
-          </p>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--primary)', fontSize: '0.85rem', fontWeight: 600 }}>
-            <CheckCircle2 size={16} />
-            <span>ECO-12 & ECO-13 Active</span>
+        )}
+
+        {user?.role === 'User' && (
+          <div className="glass-card">
+            <div style={{ display: 'inline-flex', padding: '10px', borderRadius: '12px', background: 'rgba(6, 182, 212, 0.15)', color: 'var(--accent)', marginBottom: '1rem' }}>
+              <PackageSearch size={24} />
+            </div>
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '0.5rem' }}>
+              My Pickups
+            </h3>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '1.25rem' }}>
+              Track the status of your requested pickups, from pending to scheduled and completed.
+            </p>
+            <Link to="/my-pickups" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: 'var(--accent)', fontSize: '0.9rem', fontWeight: 600 }}>
+              <span>View My Pickups</span>
+              <ArrowRight size={16} />
+            </Link>
           </div>
-        </div>
+        )}
+
+        {user?.role === 'Recycler' && (
+          <div className="glass-card">
+            <div style={{ display: 'inline-flex', padding: '10px', borderRadius: '12px', background: 'rgba(16, 185, 129, 0.15)', color: 'var(--primary)', marginBottom: '1rem' }}>
+              <Shield size={24} />
+            </div>
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '0.5rem' }}>
+              Schedule Management
+            </h3>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '1.25rem' }}>
+              Review pending pickup requests and confirm a date and time slot with the customer.
+            </p>
+            <Link to="/schedule" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: 'var(--primary)', fontSize: '0.9rem', fontWeight: 600 }}>
+              <span>Manage Schedule</span>
+              <ArrowRight size={16} />
+            </Link>
+          </div>
+        )}
 
         <div className="glass-card">
           <div style={{ display: 'inline-flex', padding: '10px', borderRadius: '12px', background: 'rgba(6, 182, 212, 0.15)', color: 'var(--accent)', marginBottom: '1rem' }}>
@@ -64,9 +103,6 @@ export const DashboardView = () => {
           <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '0.5rem' }}>
             Profile Management
           </h3>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '1.25rem' }}>
-            Maintain contact info, address details, and recycler facility capacity specs.
-          </p>
           <Link to="/profile" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: 'var(--accent)', fontSize: '0.9rem', fontWeight: 600 }}>
             <span>Edit Profile</span>
             <ArrowRight size={16} />
