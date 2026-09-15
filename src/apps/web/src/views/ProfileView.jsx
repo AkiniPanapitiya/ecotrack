@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { authApi } from '../services/api';
+import { profileApi } from '../services/api';
 import { User, Mail, Phone, MapPin, Building2, Shield, CheckCircle2, AlertCircle, Save, Clock } from 'lucide-react';
 
 export const ProfileView = () => {
@@ -29,7 +29,7 @@ export const ProfileView = () => {
   const loadProfile = async () => {
     setLoading(true);
     try {
-      const res = await authApi.getProfile();
+      const res = await profileApi.getProfile();
       setProfile(res.data);
       setFormData({
         fullName: res.data.fullName || '',
@@ -56,10 +56,23 @@ export const ProfileView = () => {
     setServerError('');
   };
 
+  const handlePhoneChange = (e) => {
+    const digitsOnly = e.target.value.replace(/\D/g, '').slice(0, 10);
+    setFormData(prev => ({ ...prev, phoneNumber: digitsOnly }));
+    if (errors.phoneNumber) {
+      setErrors(prev => ({ ...prev, phoneNumber: '' }));
+    }
+    setSuccessMessage('');
+    setServerError('');
+  };
+
   const validate = () => {
     const newErrors = {};
     if (!formData.fullName.trim()) {
       newErrors.fullName = 'Name is required.';
+    }
+    if (formData.phoneNumber.trim() && !/^\d{10}$/.test(formData.phoneNumber.trim())) {
+      newErrors.phoneNumber = 'Phone number must be exactly 10 digits.';
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -83,7 +96,7 @@ export const ProfileView = () => {
         operationalCapacityKg: formData.operationalCapacityKg ? parseFloat(formData.operationalCapacityKg) : null
       };
 
-      const res = await authApi.updateProfile(payload);
+      const res = await profileApi.updateProfile(payload);
       setProfile(res.data.profile);
       setSuccessMessage(res.data.message || 'Profile updated successfully.');
       await refreshProfile();
@@ -180,12 +193,15 @@ export const ProfileView = () => {
               <label className="form-label">Phone Number</label>
               <input
                 type="tel"
+                inputMode="numeric"
                 name="phoneNumber"
                 className="form-input"
+                maxLength={10}
                 value={formData.phoneNumber}
-                onChange={handleChange}
-                placeholder="+94 77 123 4567"
+                onChange={handlePhoneChange}
+                placeholder="0771234567"
               />
+              {errors.phoneNumber && <div className="form-error"><AlertCircle size={14} />{errors.phoneNumber}</div>}
             </div>
 
             <div className="form-group">

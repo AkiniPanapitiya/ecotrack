@@ -35,6 +35,9 @@ attachAuthToken(logisticsClient);
 export const authApi = {
   register: (data) => api.post('/auth/register', data),
   login: (data) => api.post('/auth/login', data),
+  logout: () => api.post('/auth/logout'),
+  forgotPassword: (data) => api.post('/auth/forgot-password', data),
+  resetPassword: (data) => api.post('/auth/reset-password', data),
 };
 
 // ECO-14: Profile Management Endpoints
@@ -43,11 +46,21 @@ export const profileApi = {
   updateProfile: (data) => api.put('/profile', data),
 };
 
+export const auditApi = {
+  getReport: (params) => api.get('/audit/report', { params }),
+};
+
 // ECO-15: Logistics Pickup Booking Endpoints
 export const logisticsApi = {
   createPickup: (data) => logisticsClient.post('/pickup', data),
   getPickupById: (id) => logisticsClient.get(`/pickup/${id}`),
   getUserPickups: (userId) => logisticsClient.get(`/pickup/user/${userId}`),
+  getPendingPickups: () => logisticsClient.get('/pickup/pending'),
+  getRecyclerSchedule: (recyclerId) => logisticsClient.get(`/pickup/recycler/${recyclerId}`),
+  confirmSchedule: (id, data) => logisticsClient.put(`/pickup/${id}/schedule`, data),
+  markAsCollected: (id) => logisticsClient.post(`/pickup/${id}/collect`),
+  cancelPickup: (id) => logisticsClient.delete(`/pickup/${id}/cancel`),
+  reschedulePickup: (id, data) => logisticsClient.put(`/pickup/${id}/reschedule`, data),
 };
 
 export default api;

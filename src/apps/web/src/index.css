@@ -245,6 +245,17 @@ button, input, select, textarea {
   border-color: rgba(255, 255, 255, 0.2);
 }
 
+.btn-logout {
+  background: var(--danger-bg);
+  color: var(--danger);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.btn-logout:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.22);
+  border-color: rgba(239, 68, 68, 0.5);
+}
+
 .btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;

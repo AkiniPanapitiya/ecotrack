@@ -1,15 +1,15 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { Leaf, User, Shield, LogOut, FileText, LayoutDashboard, Building2, Truck, PackageSearch } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { Leaf, User, Shield, LogOut, FileText, LayoutDashboard, Building2, Truck } from 'lucide-react';
 
 export const Navbar = () => {
   const { user, isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
 
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login', {state: {message: 'You have been logged out successfully.'}});
   };
 
   return (
@@ -27,20 +27,33 @@ export const Navbar = () => {
               <span>Dashboard</span>
             </Link>
 
+          {user?.role === 'User' && (
             <Link to="/pickup" className="nav-link" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <Truck size={18} />
               <span>Book Pickup</span>
             </Link>
+          )}
 
-            <Link to="/profile" className="nav-link" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <User size={18} />
-              <span>Profile</span>
-            </Link>
+          {user?.role === 'User' && (
+          <Link to="/my-pickups" className="nav-link" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <PackageSearch size={18} />
+              <span>My Pickups</span>
+          </Link>
+          )}
+            
+            {user?.role === 'Recycler' && (
+              <Link to="/schedule" className="nav-link" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Shield size={18} />
+                <span>Schedule Management</span>
+              </Link>
+            )}
 
-            <Link to="/audit-report" className="nav-link" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <FileText size={18} />
-              <span>Audit Report</span>
-            </Link>
+                        {user?.role === 'Admin' && (
+              <Link to="/audit-report" className="nav-link" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <FileText size={18} />
+                <span>Audit Report</span>
+              </Link>
+            )}
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginLeft: '12px', borderLeft: '1px solid var(--border-color)', paddingLeft: '16px' }}>
               <span className={`badge ${user?.role === 'Recycler' ? 'badge-recycler' : 'badge-user'}`}>
@@ -48,13 +61,17 @@ export const Navbar = () => {
                 {user?.role}
               </span>
 
-              <span style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-                {user?.fullName}
-              </span>
+              <Link
+                to="/profile"
+                style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)' }}
+              >
+                <User size={16} />
+                <span>Profile</span>
+              </Link>
 
               <button
                 onClick={handleLogout}
-                className="btn btn-secondary"
+                className="btn btn-logout"
                 style={{ padding: '0.45rem 0.85rem', fontSize: '0.85rem' }}
                 title="Log out"
               >

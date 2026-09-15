@@ -4,12 +4,15 @@ public class PickupRequest
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid UserId { get; set; }
+    public Guid? RecyclerId { get; set; }
     public string Category { get; set; } = string.Empty;
     public decimal EstimatedWeightKg { get; set; }
     public string PickupAddress { get; set; } = string.Empty;
     public string ContactPhone { get; set; } = string.Empty;
     public DateTime PreferredDate { get; set; }
+    public DateTime? ScheduledDate { get; set; }
     public string TimeSlot { get; set; } = string.Empty;
+    public string? ScheduledTimeSlot { get; set; }
     public string? SpecialInstructions { get; set; }
     public string Status { get; set; } = "Pending";
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

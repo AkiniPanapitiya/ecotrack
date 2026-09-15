@@ -40,3 +40,44 @@ CREATE TABLE IF NOT EXISTS `PickupItems` (
     CONSTRAINT `fk_pickup_item_request` FOREIGN KEY (`PickupRequestId`) REFERENCES `PickupRequests` (`Id`) ON DELETE CASCADE,
     INDEX `idx_item_request` (`PickupRequestId`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 3. Add recycler scheduling columns to PickupRequests (Sprint 2)
+-- Uses a stored procedure + information_schema check instead of
+-- "ADD COLUMN IF NOT EXISTS", since that syntax is MariaDB-only and
+-- fails with a syntax error on standard MySQL.
+DELIMITER $$
+DROP PROCEDURE IF EXISTS `sp_eco95_add_scheduling_columns` $$
+CREATE PROCEDURE `sp_eco95_add_scheduling_columns`()
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'PickupRequests' AND COLUMN_NAME = 'RecyclerId'
+    ) THEN
+        ALTER TABLE `PickupRequests` ADD COLUMN `RecyclerId` VARCHAR(36) NULL;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'PickupRequests' AND COLUMN_NAME = 'ScheduledDate'
+    ) THEN
+        ALTER TABLE `PickupRequests` ADD COLUMN `ScheduledDate` DATE NULL;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'PickupRequests' AND COLUMN_NAME = 'ScheduledTimeSlot'
+    ) THEN
+        ALTER TABLE `PickupRequests` ADD COLUMN `ScheduledTimeSlot` VARCHAR(50) NULL;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.STATISTICS
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'PickupRequests' AND INDEX_NAME = 'idx_recycler_schedule'
+    ) THEN
+        ALTER TABLE `PickupRequests` ADD INDEX `idx_recycler_schedule` (`RecyclerId`, `ScheduledDate`, `ScheduledTimeSlot`);
+    END IF;
+END $$
+DELIMITER ;
+
+CALL `sp_eco95_add_scheduling_columns`();
+DROP PROCEDURE IF EXISTS `sp_eco95_add_scheduling_columns`;

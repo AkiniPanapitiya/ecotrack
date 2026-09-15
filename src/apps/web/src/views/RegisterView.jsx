@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
+import {useNavigate} from 'react-router-dom';
 import { authApi } from '../services/api';
 import { Leaf, User, Building2, AlertCircle, CheckCircle2, ArrowRight } from 'lucide-react';
 
 export const RegisterView = () => {
+  const navigate = useNavigate();
   const [role, setRole] = useState('User'); // 'User' or 'Recycler'
   const [formData, setFormData] = useState({
     fullName: '',
@@ -22,42 +24,62 @@ export const RegisterView = () => {
   const [successMessage, setSuccessMessage] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const validateField = (name, value, allValues = formData) => {
+    switch (name) {
+      case 'fullName':
+        if (!value.trim()) return 'Full name is required.';
+        if (value.trim().length < 2) return 'Full name must be at least 2 characters.';
+        return '';
+
+      case 'email':
+        if (!value.trim()) return 'Email is required.';
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())) return 'Please enter a valid email address.';
+        return '';
+
+      case 'password':
+        if (!value) return 'Password is required.';
+        if (value.length < 8) return 'Password must be at least 8 characters.';
+        return '';
+
+      case 'confirmPassword':
+        if (!value) return 'Please confirm your password.';
+        if (value !== allValues.password) return 'Passwords do not match.';
+        return '';
+
+      case 'companyName':
+        if (role === 'Recycler' && !value.trim()) return 'Company name is required for recyclers.';
+        return '';
+
+      case 'businessRegistrationNumber':
+        if (role === 'Recycler' && !value.trim()) return 'Business registration number is required.';
+        return '';
+
+      case 'facilityAddress':
+        if (role === 'Recycler' && !value.trim()) return 'Facility address is required.';
+        return '';
+      
+            case 'phoneNumber':
+        if (value.trim() && !/^\d{10}$/.test(value.trim())) {
+          return 'Phone number must be exactly 10 digits.';
+        }
+        return '';
+
+      default:
+        return '';
+    }
+  };
+
   const validateForm = () => {
-    const newErrors = {};
-
-    if (!formData.fullName.trim()) {
-      newErrors.fullName = 'Full name is required.';
-    } else if (formData.fullName.trim().length < 2) {
-      newErrors.fullName = 'Full name must be at least 2 characters.';
-    }
-
-    if (!formData.email.trim()) {
-      newErrors.email = 'Email is required.';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
-      newErrors.email = 'Please enter a valid email address.';
-    }
-
-    if (!formData.password) {
-      newErrors.password = 'Password is required.';
-    } else if (formData.password.length < 8) {
-      newErrors.password = 'Password must be at least 8 characters.';
-    }
-
-    if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match.';
-    }
-
+    const fieldsToCheck = ['fullName', 'email', 'password', 'confirmPassword', 'phoneNumber'];
     if (role === 'Recycler') {
-      if (!formData.companyName.trim()) {
-        newErrors.companyName = 'Company name is required for recyclers.';
-      }
-      if (!formData.businessRegistrationNumber.trim()) {
-        newErrors.businessRegistrationNumber = 'Business registration number is required.';
-      }
-      if (!formData.facilityAddress.trim()) {
-        newErrors.facilityAddress = 'Facility address is required.';
-      }
+      fieldsToCheck.push('companyName', 'businessRegistrationNumber', 'facilityAddress');
     }
+
+    const newErrors = {};
+    fieldsToCheck.forEach((field) => {
+      const message = validateField(field, formData[field], formData);
+      if (message) newErrors[field] = message;
+    });
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -65,9 +87,29 @@ export const RegisterView = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    const updated = { ...formData, [name]: value };
+    setFormData(updated);
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
+    }
+    if (name === 'password' && errors.confirmPassword && updated.confirmPassword) {
+    setErrors(prev => ({ ...prev, confirmPassword: validateField('confirmPassword', updated.confirmPassword, updated) }));
+  }
+    setServerError('');
+  };
+
+  const handleBlur = (e) => {
+    const { name, value } = e.target;
+    const message = validateField(name, value, formData);
+    setErrors(prev => ({ ...prev, [name]: message }));
+  };
+
+    const handlePhoneChange = (e) => {
+    const digitsOnly = e.target.value.replace(/\D/g, '').slice(0, 10);
+    const updated = { ...formData, phoneNumber: digitsOnly };
+    setFormData(updated);
+    if (errors.phoneNumber) {
+      setErrors(prev => ({ ...prev, phoneNumber: '' }));
     }
     setServerError('');
   };
@@ -98,6 +140,9 @@ export const RegisterView = () => {
     try {
       const response = await authApi.register(payload);
       setSuccessMessage(response.data.message || 'Account created successfully. Please log in.');
+      setTimeout(() => {
+        navigate('/login');
+      }, 2000);
     } catch (error) {
       const msg = error.response?.data?.message || 'Registration failed. Please check your inputs.';
       setServerError(msg);
@@ -179,6 +224,7 @@ export const RegisterView = () => {
               placeholder="e.g. Akini Panapitiya"
               value={formData.fullName}
               onChange={handleChange}
+              onBlur={handleBlur}
             />
             {errors.fullName && <div className="form-error"><AlertCircle size={14} />{errors.fullName}</div>}
           </div>
@@ -192,6 +238,7 @@ export const RegisterView = () => {
               placeholder="akini@ecotrack.lk"
               value={formData.email}
               onChange={handleChange}
+              onBlur={handleBlur}
             />
             {errors.email && <div className="form-error"><AlertCircle size={14} />{errors.email}</div>}
           </div>
@@ -206,6 +253,7 @@ export const RegisterView = () => {
                 placeholder="••••••••"
                 value={formData.password}
                 onChange={handleChange}
+                onBlur={handleBlur}
               />
               {errors.password && <div className="form-error"><AlertCircle size={14} />{errors.password}</div>}
             </div>
@@ -219,6 +267,7 @@ export const RegisterView = () => {
                 placeholder="••••••••"
                 value={formData.confirmPassword}
                 onChange={handleChange}
+                onBlur={handleBlur}
               />
               {errors.confirmPassword && <div className="form-error"><AlertCircle size={14} />{errors.confirmPassword}</div>}
             </div>
@@ -229,12 +278,17 @@ export const RegisterView = () => {
               <label className="form-label">Phone Number</label>
               <input
                 type="tel"
+                inputMode="numeric"
                 name="phoneNumber"
                 className="form-input"
-                placeholder="+94 77 123 4567"
+                placeholder="0771234567"
+                maxLength={10}
                 value={formData.phoneNumber}
-                onChange={handleChange}
+                onChange={handlePhoneChange}
+                onBlur={handleBlur}
               />
+              {errors.phoneNumber && <div className="form-error"><AlertCircle size={14} />{errors.phoneNumber}
+              </div>}
             </div>
 
             <div className="form-group">
@@ -266,6 +320,7 @@ export const RegisterView = () => {
                   placeholder="Green Yard E-Waste Solutions Ltd"
                   value={formData.companyName}
                   onChange={handleChange}
+                  onBlur={handleBlur}
                 />
                 {errors.companyName && <div className="form-error"><AlertCircle size={14} />{errors.companyName}</div>}
               </div>
@@ -280,6 +335,7 @@ export const RegisterView = () => {
                     placeholder="PV-1029384"
                     value={formData.businessRegistrationNumber}
                     onChange={handleChange}
+                    onBlur={handleBlur}
                   />
                   {errors.businessRegistrationNumber && <div className="form-error"><AlertCircle size={14} />{errors.businessRegistrationNumber}</div>}
                 </div>
@@ -293,6 +349,7 @@ export const RegisterView = () => {
                     placeholder="5000"
                     value={formData.operationalCapacityKg}
                     onChange={handleChange}
+                    onBlur={handleBlur}
                   />
                 </div>
               </div>

@@ -2,9 +2,12 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Leaf, Lock, Mail, AlertCircle, ArrowRight } from 'lucide-react';
+import { useLocation } from "react-router-dom";
 
 export const LoginView = () => {
   const { login } = useAuth();
+  const location = useLocation();
+  const [logoutMessage, setLogoutMessage] = useState(location.state?.message || '');
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
@@ -73,6 +76,12 @@ export const LoginView = () => {
           </p>
         </div>
 
+        {logoutMessage && (
+          <div className="alert alert-success">
+            {logoutMessage}
+          </div>
+        )}
+
         {serverError && (
           <div className="alert alert-danger">
             <AlertCircle size={18} />
@@ -98,6 +107,9 @@ export const LoginView = () => {
           <div className="form-group">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
               <label className="form-label" style={{ marginBottom: 0 }}>Password</label>
+              <Link to="/forgot-password" style={{ fontSize: '0.85rem', color: 'var(--primary)', fontWeight: 600 }}>
+                Forgot Password?
+              </Link>
             </div>
             <input
               type="password"
