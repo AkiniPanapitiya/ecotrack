@@ -51,6 +51,10 @@ builder.Services.AddSingleton<IDbConnectionFactory, DbConnectionFactory>();
 builder.Services.AddScoped<IPickupRepository, PickupRepository>();
 builder.Services.AddScoped<IPickupService, PickupService>();
 
+// Kafka event producer (ECO-87) — publishes pickup lifecycle events
+builder.Services.AddSingleton<EcoTrack.LogisticsService.Messaging.IEventProducer,
+                              EcoTrack.LogisticsService.Messaging.KafkaProducerService>();
+
 // Configure Swagger / OpenAPI
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
