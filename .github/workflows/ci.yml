@@ -28,10 +28,8 @@ jobs:
 
       - name: Run unit tests
         run: |
-          echo "Running tests..."
-          dotnet test EcoTrack.slnx --no-build --verbosity normal --logger "trx;LogFileName=test-results.trx" || \
-          echo "Note: Some tests may not be configured yet — check test project setup"
-        continue-on-error: true
+          dotnet test tests/IdentityService.Tests/IdentityService.Tests.csproj --configuration Release --verbosity normal
+          dotnet test tests/LogisticsService.Tests/LogisticsService.Tests.csproj --configuration Release --verbosity normal 
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
