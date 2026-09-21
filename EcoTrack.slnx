@@ -15,5 +15,6 @@
   <Folder Name="/tests/">
     <Project Path="tests/IdentityService.Tests/IdentityService.Tests.csproj" />
     <Project Path="tests/LogisticsService.Tests/LogisticsService.Tests.csproj" />
+    <Project Path="tests/MarketplaceService.Tests/MarketplaceService.Tests.csproj" />
   </Folder>
 </Solution>
