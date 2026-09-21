@@ -71,12 +71,13 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_HTTP_PORTS=5003
-      - ConnectionStrings__DefaultConnection=Server=ecotrack-db;Database=ecotrack_marketplace;Uid=root;Pwd=root123;
+      - ConnectionStrings__DefaultConnection=Server=ecotrack-db;Database=ecotrack_marketplace_db;Uid=root;Pwd=root123;
       - Kafka__BootstrapServers=kafka:9092
     networks:
       - ecotrack-network
     depends_on:
       - kafka
+      - db
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5003/marketplace/health"]
       interval: 10s
@@ -98,12 +99,13 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_HTTP_PORTS=5004
-      - ConnectionStrings__DefaultConnection=Server=ecotrack-db;Database=ecotrack_analytics;Uid=root;Pwd=root123;
+      - ConnectionStrings__DefaultConnection=Server=ecotrack-db;Database=ecotrack_analytics_db;Uid=root;Pwd=root123;
       - Kafka__BootstrapServers=kafka:9092
     networks:
       - ecotrack-network
     depends_on:
       - kafka
+      - db
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5004/analytics/health"]
       interval: 10s
