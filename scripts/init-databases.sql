@@ -141,7 +141,68 @@ CREATE DATABASE IF NOT EXISTS `ecotrack_marketplace_db`
     CHARACTER SET utf8mb4
     COLLATE utf8mb4_unicode_ci;
 
+USE `ecotrack_marketplace_db`;
+
+CREATE TABLE IF NOT EXISTS `Listings` (
+    `Id` VARCHAR(36) NOT NULL PRIMARY KEY,
+    `SellerId` VARCHAR(36) NOT NULL,
+    `Title` VARCHAR(200) NOT NULL,
+    `Category` VARCHAR(100) NOT NULL,
+    `Description` TEXT NULL,
+    `Price` DECIMAL(12, 2) NOT NULL,
+    `StockQuantity` INT NOT NULL DEFAULT 1,
+    `Condition` VARCHAR(50) NOT NULL DEFAULT 'Refurbished',
+    `WarrantyMonths` INT NOT NULL DEFAULT 0,
+    `Status` VARCHAR(50) NOT NULL DEFAULT 'Active',
+    `CreatedAt` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    `UpdatedAt` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    INDEX `idx_listing_seller` (`SellerId`),
+    INDEX `idx_listing_status` (`Status`),
+    INDEX `idx_listing_category` (`Category`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `Orders` (
+    `Id` VARCHAR(36) NOT NULL PRIMARY KEY,
+    `BuyerId` VARCHAR(36) NOT NULL,
+    `ListingId` VARCHAR(36) NOT NULL,
+    `Quantity` INT NOT NULL DEFAULT 1,
+    `TotalPrice` DECIMAL(12, 2) NOT NULL,
+    `Status` VARCHAR(50) NOT NULL DEFAULT 'Placed',
+    `ShippingAddress` VARCHAR(255) NOT NULL,
+    `PaymentStatus` VARCHAR(50) NOT NULL DEFAULT 'Pending',
+    `CreatedAt` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    `UpdatedAt` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    CONSTRAINT `fk_order_listing` FOREIGN KEY (`ListingId`) REFERENCES `Listings` (`Id`) ON DELETE RESTRICT,
+    INDEX `idx_order_buyer` (`BuyerId`),
+    INDEX `idx_order_status` (`Status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `Valuations` (
+    `Id` VARCHAR(36) NOT NULL PRIMARY KEY,
+    `UserId` VARCHAR(36) NOT NULL,
+    `DeviceCategory` VARCHAR(100) NOT NULL,
+    `Brand` VARCHAR(100) NOT NULL,
+    `Model` VARCHAR(100) NOT NULL,
+    `ConditionScore` INT NOT NULL,
+    `EstimatedValue` DECIMAL(12, 2) NOT NULL,
+    `CreatedAt` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    INDEX `idx_valuation_user` (`UserId`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `DisposalCertificates` (
+    `Id` VARCHAR(36) NOT NULL PRIMARY KEY,
+    `PickupRequestId` VARCHAR(36) NOT NULL,
+    `RecyclerId` VARCHAR(36) NOT NULL,
+    `CertificateNumber` VARCHAR(100) NOT NULL UNIQUE,
+    `WeightKg` DECIMAL(10, 2) NOT NULL,
+    `DisposalMethod` VARCHAR(100) NOT NULL,
+    `IssuedAt` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    INDEX `idx_cert_pickup` (`PickupRequestId`),
+    INDEX `idx_cert_recycler` (`RecyclerId`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- 4. Analytics Database (Port 5004 - Analytics Service)
 CREATE DATABASE IF NOT EXISTS `ecotrack_analytics_db`
     CHARACTER SET utf8mb4
     COLLATE utf8mb4_unicode_ci;
+
