@@ -136,6 +136,23 @@ CREATE TABLE IF NOT EXISTS `PickupItems` (
     INDEX `idx_item_request` (`PickupRequestId`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- 8. Recycler Documents Table (ECO-18: Recycler KYC Verification)
+CREATE TABLE IF NOT EXISTS `RecyclerDocuments` (
+    `Id` VARCHAR(36) NOT NULL PRIMARY KEY,
+    `RecyclerId` VARCHAR(36) NOT NULL,
+    `DocumentType` VARCHAR(50) NOT NULL DEFAULT 'ID',
+    `FilePath` VARCHAR(500) NOT NULL,
+    `Status` VARCHAR(50) NOT NULL DEFAULT 'Pending',
+    `SubmittedAt` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    `ReviewedBy` VARCHAR(36) NULL,
+    `ReviewedAt` DATETIME(6) NULL,
+    `ReviewNote` TEXT NULL,
+    CONSTRAINT `fk_recycler_doc_recycler` FOREIGN KEY (`RecyclerId`) REFERENCES `RecyclerProfiles` (`Id`) ON DELETE CASCADE,
+    INDEX `idx_recycler_doc_status` (`Status`),
+    INDEX `idx_recycler_doc_recycler` (`RecyclerId`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
 -- 3. Marketplace Database (Port 5003 - Marketplace Service)
 CREATE DATABASE IF NOT EXISTS `ecotrack_marketplace_db`
     CHARACTER SET utf8mb4
