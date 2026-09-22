@@ -20,6 +20,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Identity\IdentityService.csproj" />
+    <ProjectReference Include="..\..\src\Logistics\LogisticsService.csproj" />
+    <ProjectReference Include="..\..\src\Marketplace\MarketplaceService.csproj" />
   </ItemGroup>
 
 </Project>
