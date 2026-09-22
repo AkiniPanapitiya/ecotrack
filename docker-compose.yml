@@ -143,6 +143,20 @@ services:
       retries: 5
       start_period: 30s
 
+  # Kafka Topic Provisioner (Sprint 3 Topics & DLQs)
+  kafka-init:
+    image: apache/kafka:3.8.0
+    container_name: ecotrack-kafka-init
+    depends_on:
+      kafka:
+        condition: service_healthy
+    networks:
+      - ecotrack-network
+    volumes:
+      - ./scripts/init-kafka-topics.sh:/init-kafka-topics.sh
+    entrypoint: ["/bin/bash", "/init-kafka-topics.sh"]
+    restart: "no"
+
   # MySQL Database
   db:
     image: mysql:8.0
