@@ -261,6 +261,16 @@ button, input, select, textarea {
   cursor: not-allowed;
 }
 
+/* Spinner animation for refresh icon */
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 /* Alerts */
 .alert {
   padding: 1rem 1.25rem;

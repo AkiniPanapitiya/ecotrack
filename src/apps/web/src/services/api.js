@@ -60,6 +60,15 @@ export const auditApi = {
   getReport: (params) => api.get('/audit/report', { params }),
 };
 
+// ECO-XX: KYC Verification Endpoints
+export const kycApi = {
+  uploadDocument: (formData) =>
+    api.post('/kyc/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  getMyStatus: () => api.get('/kyc/my-status'),
+  getPendingSubmissions: () => api.get('/kyc/pending'),
+  reviewDocument: (documentId, data) => api.put(`/kyc/review/${documentId}`, data),
+};
+
 // ECO-15: Logistics Pickup Booking Endpoints
 export const logisticsApi = {
   createPickup: (data) => logisticsClient.post('/pickup', data),

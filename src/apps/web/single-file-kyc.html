@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EcoTrack - KYC Verification</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #10b981; --primary-hover: #059669; --primary-light: rgba(16,185,129,0.12);
+            --accent: #06b6d4; --bg-main: #0b0f17; --bg-surface: #111827;
+            --bg-card: rgba(17,24,39,0.85); --border-color: rgba(255,255,255,0.08);
+            --text-primary: #f9fafb; --text-secondary: #9ca3af; --text-muted: #6b7280;
+            --danger: #ef4444; --warning: #f59e0b; --success: #10b981;
+            --radius-sm: 8px; --radius-md: 12px; --radius-lg: 18px;
+            --shadow-card: 0 10px 30px -10px rgba(0,0,0,0.5);
+            --success-bg: rgba(16,185,129,0.12); --danger-bg: rgba(239,68,68,0.12);
+            --warning-bg: rgba(245,158,11,0.12);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+            background: var(--bg-main); color: var(--text-primary);
+            min-height: 100vh; line-height: 1.6;
+            background-image: radial-gradient(circle at 15% 15%, rgba(16,185,129,0.08) 0%, transparent 40%),
+                              radial-gradient(circle at 85% 85%, rgba(6,182,212,0.06) 0%, transparent 40%);
+            background-attachment: fixed;
+        }
+        a { color: inherit; text-decoration: none; }
+        button, input, select { font-family: inherit; font-size: 1rem; }
+
+        .navbar {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 1rem 2rem; background: rgba(11,15,23,0.85);
+            backdrop-filter: blur(20px); border-bottom: 1px solid var(--border-color);
+            position: sticky; top: 0; z-index: 100;
+        }
+        .nav-brand { display: flex; align-items: center; gap: 0.75rem; font-weight: 800; font-size: 1.35rem; }
+        .nav-brand span { background: linear-gradient(135deg, #10b981, #06b6d4); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+
+        .container { max-width: 700px; margin: 2rem auto; padding: 0 1rem; }
+
+        h1 { font-size: 1.5rem; font-weight: 800; margin-bottom: 1.5rem; }
+
+        .status-row { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+        .status-label { color: var(--text-secondary); font-size: 0.9rem; }
+
+        .badge {
+            display: inline-flex; align-items: center; gap: 0.4rem;
+            padding: 0.3rem 0.8rem; border-radius: 9999px;
+            font-size: 0.8rem; font-weight: 600;
+        }
+        .badge-pending { background: rgba(245,158,11,0.15); color: var(--warning); border: 1px solid rgba(245,158,11,0.3); }
+        .badge-approved { background: rgba(16,185,129,0.15); color: var(--success); border: 1px solid rgba(16,185,129,0.3); }
+        .badge-rejected { background: rgba(239,68,68,0.15); color: var(--danger); border: 1px solid rgba(239,68,68,0.3); }
+
+        .glass-card {
+            background: var(--bg-card); backdrop-filter: blur(16px);
+            border: 1px solid var(--border-color); border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-card); padding: 2rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .alert {
+            display: flex; align-items: flex-start; gap: 0.75rem;
+            padding: 1rem 1.25rem; margin-bottom: 1.5rem;
+            border-radius: var(--radius-md); font-size: 0.9rem;
+        }
+        .alert-success { background: var(--success-bg); border: 1px solid rgba(16,185,129,0.3); color: #34d399; }
+        .alert-danger { background: var(--danger-bg); border: 1px solid rgba(239,68,68,0.3); color: #f87171; }
+
+        .form-group { margin-bottom: 1.25rem; }
+        .form-label { display: block; margin-bottom: 0.4rem; font-weight: 500; color: var(--text-secondary); font-size: 0.9rem; }
+
+        .form-input, .form-select {
+            width: 100%; padding: 0.65rem 0.85rem;
+            background: rgba(17,24,39,0.7); color: var(--text-primary);
+            border: 1px solid var(--border-color); border-radius: var(--radius-md);
+            transition: all 0.2s ease;
+        }
+        .form-input:focus, .form-select:focus {
+            outline: none; border-color: var(--primary);
+            background: rgba(17,24,39,0.95);
+            box-shadow: 0 0 0 3px rgba(16,185,129,0.15);
+        }
+
+        .file-wrapper {
+            position: relative; display: inline-block; width: 100%;
+        }
+        .file-btn {
+            display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+            width: 100%; padding: 0.75rem 1rem;
+            background: rgba(16,185,129,0.1); color: var(--primary);
+            border: 1px dashed rgba(16,185,129,0.4); border-radius: var(--radius-md);
+            cursor: pointer; font-weight: 500; transition: all 0.2s;
+        }
+        .file-btn:hover { background: rgba(16,185,129,0.2); border-color: var(--primary); }
+        .file-input { display: none; }
+
+        .btn {
+            display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+            padding: 0.75rem 1.5rem; border-radius: var(--radius-md);
+            font-weight: 600; cursor: pointer; transition: all 0.2s;
+            border: none;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white; width: 100%;
+        }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(16,185,129,0.3); }
+        .btn-primary:disabled { background: #4a5568; cursor: not-allowed; transform: none; box-shadow: none; }
+
+        .file-info { font-size: 0.8rem; color: var(--primary); margin-top: 0.4rem; }
+        .hint { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.3rem; }
+        .back-btn {
+            background: rgba(255,255,255,0.08); border: 1px solid var(--border-color);
+            color: var(--text-secondary); padding: 0.4rem 0.7rem; border-radius: var(--radius-sm);
+            cursor: pointer; display: flex; align-items: center; gap: 0.3rem;
+        }
+        .back-btn:hover { background: rgba(255,255,255,0.12); color: var(--text-primary); }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <a href="#" class="nav-brand">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+            <span>EcoTrack</span>
+        </a>
+        <button class="back-btn" onclick="history.back()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+            Back
+        </button>
+    </div>
+
+    <div class="container">
+        <h1>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" style="margin-right:0.5rem"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            KYC Verification
+        </h1>
+
+        <div class="status-row">
+            <span class="status-label">Your Status:</span>
+            <span class="badge badge-pending">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                PENDING
+            </span>
+        </div>
+
+        <div class="alert alert-success">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            <span>No KYC document submitted yet</span>
+        </div>
+
+        <!-- UPLOAD FORM -->
+        <div class="glass-card">
+            <h2 style="font-size:1.15rem;font-weight:700;margin-bottom:1.25rem">Upload Your KYC Document</h2>
+
+            <div class="form-group">
+                <label class="form-label">Document Type *</label>
+                <select class="form-select" id="docType">
+                    <option value="ID">ID Card (National ID)</option>
+                    <option value="BusinessProof">Business Proof (Registration Certificate)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Upload Document *</label>
+                <div class="file-wrapper">
+                    <label for="fileInput" class="file-btn" id="fileBtn">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                        Choose File
+                    </label>
+                    <input type="file" id="fileInput" class="file-input" accept=".jpg,.jpeg,.png,.pdf">
+                </div>
+                <div class="file-info" id="fileInfo"></div>
+                <div class="hint">Accepted: JPG, PNG, PDF — Max 5 MB</div>
+            </div>
+
+            <button class="btn btn-primary" id="submitBtn" disabled onclick="handleSubmit()">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                Submit Document for Review
+            </button>
+        </div>
+
+        <div id="resultBox" style="display:none" class="glass-card"></div>
+    </div>
+
+    <script>
+        const fileInput = document.getElementById('fileInput');
+        const fileBtn = document.getElementById('fileBtn');
+        const fileInfo = document.getElementById('fileInfo');
+        const submitBtn = document.getElementById('submitBtn');
+        const resultBox = document.getElementById('resultBox');
+        const docTypeSelect = document.getElementById('docType');
+
+        // Hide native file input styling completely
+        fileInput.style.display = 'none';
+
+        fileInput.addEventListener('change', () => {
+            if (fileInput.files.length > 0) {
+                submitBtn.disabled = false;
+                fileInfo.textContent = 'Selected: ' + fileInput.files[0].name + ' (' + (fileInput.files[0].size / 1024 / 1024).toFixed(2) + ' MB)';
+            } else {
+                submitBtn.disabled = true;
+                fileInfo.textContent = '';
+            }
+        });
+
+        async function handleSubmit() {
+            const file = fileInput.files[0];
+            if (!file) return;
+            if (file.size > 5 * 1024 * 1024) {
+                showResult('danger', 'File too large. Maximum size is 5 MB.');
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<div style="width:18px;height:18px;border:2px solid rgba(255,255,255,0.3);border-top-color:white;border-radius:50%;animation:spin 0.8s linear infinite"></div> Uploading...';
+            resultBox.style.display = 'none';
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const token = localStorage.getItem('kyc_test_token') || prompt('Enter your auth token from Insomnia:');
+                if (!token) { resetBtn(); return; }
+
+                const res = await fetch('http://localhost:5001/api/kyc/upload', {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + token },
+                    body: formData
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    showResult('success', 'Document submitted for review. Status: ' + (data.response?.status || 'Pending'));
+                    fileInput.value = '';
+                    submitBtn.disabled = true;
+                    fileInfo.textContent = '';
+                } else {
+                    showResult('danger', data.message || 'Upload failed. Please try again.');
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Submit Document for Review';
+                }
+            } catch (err) {
+                showResult('danger', 'Network error: ' + err.message);
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Submit Document for Review';
+            }
+        }
+
+        function showResult(type, message) {
+            resultBox.style.display = 'block';
+            resultBox.className = 'glass-card';
+            if (type === 'success') {
+                resultBox.innerHTML = '<div class="alert alert-success"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><span>' + message + '</span></div>';
+            } else {
+                resultBox.innerHTML = '<div class="alert alert-danger"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg><span>' + message + '</span></div>';
+            }
+        }
+
+        function resetBtn() {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Submit Document for Review';
+        }
+
+        // Add spin animation
+        const style = document.createElement('style');
+        style.textContent = '@keyframes spin { to { transform: rotate(360deg); } }';
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>

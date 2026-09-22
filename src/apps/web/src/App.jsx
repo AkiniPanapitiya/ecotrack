@@ -7,6 +7,8 @@ import { Navbar } from './components/Navbar';
 import { RegisterView } from './views/RegisterView';
 import { LoginView } from './views/LoginView';
 import { ProfileView } from './views/ProfileView';
+import { KycView } from './views/KycView';
+import { KycAdminView } from './views/KycAdminView';
 import { PickupBookingView } from './views/PickupBookingView';
 import { DashboardView } from './views/DashboardView';
 import { ForgotPasswordView } from './views/ForgotPasswordView'; 
@@ -38,6 +40,8 @@ export const App = () => {
               <Route path="/schedule" element={<ProtectedRoute rolesAllowed={['Recycler']}><ScheduleManagementView /></ProtectedRoute>} />
               <Route path="/my-pickups" element={<ProtectedRoute><MyPickupsView /></ProtectedRoute>} />
               <Route path="/audit-report" element={<ProtectedRoute><AuditReportView /></ProtectedRoute>} />
+              <Route path="/kyc" element={<ProtectedRoute rolesAllowed={['Recycler']}><KycView /></ProtectedRoute>} />
+              <Route path="/kyc-admin" element={<ProtectedRoute rolesAllowed={['Admin']}><KycAdminView /></ProtectedRoute>} />
               <Route path="/" element={<HomeRedirect />} />
             </Routes>
           </main>

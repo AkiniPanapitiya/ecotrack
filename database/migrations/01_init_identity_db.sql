@@ -108,3 +108,22 @@ CREATE TABLE IF NOT EXISTS `PasswordResetTokens` (
     INDEX `idx_reset_user_id` (`UserId`),
     CONSTRAINT `fk_reset_token_user` FOREIGN KEY (`UserId`) REFERENCES `Users`(`Id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 8. Recycler Documents Table (ECO-18: Recycler KYC Verification)
+CREATE TABLE IF NOT EXISTS `RecyclerDocuments` (
+    `Id` VARCHAR(36) NOT NULL PRIMARY KEY,
+    `RecyclerId` VARCHAR(36) NOT NULL,
+    `DocumentType` VARCHAR(50) NOT NULL DEFAULT 'ID',
+    `FileName` VARCHAR(255) NOT NULL,
+    `FilePath` VARCHAR(500) NOT NULL,
+    `FileType` VARCHAR(100) NOT NULL,
+    `FileSize` BIGINT NOT NULL DEFAULT 0,
+    `Status` VARCHAR(50) NOT NULL DEFAULT 'Pending',
+    `SubmittedAt` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    `ReviewedBy` VARCHAR(36) NULL,
+    `ReviewedAt` DATETIME(6) NULL,
+    `ReviewNote` TEXT NULL,
+    CONSTRAINT `fk_recycler_doc_recycler` FOREIGN KEY (`RecyclerId`) REFERENCES `Users` (`Id`) ON DELETE CASCADE,
+    INDEX `idx_recycler_doc_status` (`Status`),
+    INDEX `idx_recycler_doc_recycler` (`RecyclerId`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
