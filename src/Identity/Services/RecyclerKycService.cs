@@ -145,7 +145,7 @@ public class RecyclerKycService : IRecyclerKycService
             });
         }
 
-        return (true, 200, "OK.", new MyVerificationStatusDto
+        return (true, 200, "Your KYC document has been submitted.", new MyVerificationStatusDto
         {
             HasSubmittedDocument = true,
             DocumentId = doc.Id,

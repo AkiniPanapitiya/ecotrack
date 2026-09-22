@@ -42,17 +42,29 @@ export const Navbar = () => {
           )}
             
             {user?.role === 'Recycler' && (
-              <Link to="/schedule" className="nav-link" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Shield size={18} />
-                <span>Schedule Management</span>
-              </Link>
+              <>
+                <Link to="/schedule" className="nav-link" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Shield size={18} />
+                  <span>Schedule Management</span>
+                </Link>
+                <Link to="/kyc" className="nav-link" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Shield size={18} />
+                  <span>KYC Verification</span>
+                </Link>
+              </>
             )}
 
-                        {user?.role === 'Admin' && (
-              <Link to="/audit-report" className="nav-link" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <FileText size={18} />
-                <span>Audit Report</span>
-              </Link>
+            {user?.role === 'Admin' && (
+              <>
+                <Link to="/audit-report" className="nav-link" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <FileText size={18} />
+                  <span>Audit Report</span>
+                </Link>
+                <Link to="/kyc-admin" className="nav-link" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Shield size={18} />
+                  <span>KYC Admin</span>
+                </Link>
+              </>
             )}
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginLeft: '12px', borderLeft: '1px solid var(--border-color)', paddingLeft: '16px' }}>

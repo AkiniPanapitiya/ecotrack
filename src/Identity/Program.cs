@@ -37,12 +37,14 @@ builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IAuditRepository, AuditRepository>();
 builder.Services.AddScoped<ITokenBlacklistRepository, TokenBlacklistRepository>();
 builder.Services.AddScoped<IPasswordResetTokenRepository, PasswordResetTokenRepository>();
+builder.Services.AddScoped<IRecyclerDocumentRepository, RecyclerDocumentRepository>();
 
 // Configure Domain Services
 builder.Services.AddScoped<IPasswordHasher, BcryptPasswordHasher>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 builder.Services.AddScoped<IProfileService, ProfileService>();
+builder.Services.AddScoped<IRecyclerKycService, RecyclerKycService>();
 
 // Configure JWT Authentication
 var jwtSecretKey = builder.Configuration["Jwt:SecretKey"] 

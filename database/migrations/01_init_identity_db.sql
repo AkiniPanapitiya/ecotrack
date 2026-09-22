@@ -123,7 +123,7 @@ CREATE TABLE IF NOT EXISTS `RecyclerDocuments` (
     `ReviewedBy` VARCHAR(36) NULL,
     `ReviewedAt` DATETIME(6) NULL,
     `ReviewNote` TEXT NULL,
-    CONSTRAINT `fk_recycler_doc_recycler` FOREIGN KEY (`RecyclerId`) REFERENCES `RecyclerProfiles` (`Id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_recycler_doc_recycler` FOREIGN KEY (`RecyclerId`) REFERENCES `Users` (`Id`) ON DELETE CASCADE,
     INDEX `idx_recycler_doc_status` (`Status`),
     INDEX `idx_recycler_doc_recycler` (`RecyclerId`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

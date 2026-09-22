@@ -107,7 +107,7 @@ public class RecyclerDocumentRepository : IRecyclerDocumentRepository
 
         await using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
         const string sql = @"
-            SELECT rd.Id, rd.RecyclerId, rd.DocumentType, rd.FileName, rd.FilePath, rd.FileType, rd.FileSize, rd.Status, rd.SubmittedAt,
+            SELECT rd.Id, rd.RecyclerId, rd.DocumentType, rd.FileName, rd.FilePath, rd.FileType, rd.FileSize, rd.Status, rd.SubmittedAt, rd.ReviewedBy, rd.ReviewedAt, rd.ReviewNote,
                    u.Id, u.FullName, u.Email, u.Role
             FROM RecyclerDocuments rd
             INNER JOIN Users u ON rd.RecyclerId = u.Id
@@ -122,9 +122,9 @@ public class RecyclerDocumentRepository : IRecyclerDocumentRepository
             var doc = MapDocument(reader);
             var user = new User
             {
-                Id = reader.GetGuid(9),
-                FullName = reader.GetString(10),
-                Email = reader.GetString(11)
+                Id = (await reader.GetFieldValueAsync<Guid>(12, cancellationToken)),
+                FullName = reader.GetString(13),
+                Email = reader.GetString(14)
             };
             result.Add((doc, user));
         }
@@ -163,7 +163,7 @@ public class RecyclerDocumentRepository : IRecyclerDocumentRepository
         const string sql = "SELECT COUNT(1) FROM RecyclerDocuments WHERE RecyclerId = @RecyclerId;";
         await using var command = new MySqlCommand(sql, connection);
         command.Parameters.AddWithValue("@RecyclerId", recyclerId.ToString());
-        var count = (int)(await command.ExecuteScalarAsync(cancellationToken)!);
+        var count = (long)(await command.ExecuteScalarAsync(cancellationToken)!);
         return count > 0;
     }
 
