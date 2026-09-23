@@ -16,6 +16,10 @@ public interface IUserRepository
     Task<bool> UpdateProfileAsync(Guid userId, UpdateProfileDto dto, CancellationToken cancellationToken = default);
     Task<bool> UpdateRecyclerProfileAsync(Guid userId, UpdateProfileDto dto, CancellationToken cancellationToken = default);
     Task<bool> UpdatePasswordAsync(Guid userId, string newPasswordHash, CancellationToken cancellationToken = default);
+    Task<bool> UpdateRoleAsync(Guid userId, string newRole, CancellationToken cancellationToken = default);
+    Task<bool> UpdateActiveStatusAsync(Guid userId, bool isActive, CancellationToken cancellationToken = default);
+    Task<List<UserListDto>> GetAllUsersAsync(string? roleFilter = null, bool? statusFilter = null,
+        string? sortField = null, bool sortDesc = false, CancellationToken cancellationToken = default);
 }
 
 public class UserRepository : IUserRepository
@@ -206,17 +210,96 @@ public class UserRepository : IUserRepository
             UpdatedAt = reader.GetDateTime("UpdatedAt")
         };
     }
+
     public async Task<bool> UpdatePasswordAsync(Guid userId, string newPasswordHash, CancellationToken cancellationToken = default)
     {
         await using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
         const string sql = "UPDATE Users SET PasswordHash = @PasswordHash, UpdatedAt = @UpdatedAt WHERE Id = @Id;";
-
         await using var command = new MySqlCommand(sql, connection);
         command.Parameters.AddWithValue("@PasswordHash", newPasswordHash);
         command.Parameters.AddWithValue("@UpdatedAt", DateTime.UtcNow);
         command.Parameters.AddWithValue("@Id", userId.ToString());
-
         var rows = await command.ExecuteNonQueryAsync(cancellationToken);
         return rows > 0;
+    }
+
+    public async Task<bool> UpdateRoleAsync(Guid userId, string newRole, CancellationToken cancellationToken = default)
+    {
+        await using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
+        const string sql = "UPDATE Users SET Role = @Role, UpdatedAt = @UpdatedAt WHERE Id = @Id;";
+        await using var command = new MySqlCommand(sql, connection);
+        command.Parameters.AddWithValue("@Role", newRole);
+        command.Parameters.AddWithValue("@UpdatedAt", DateTime.UtcNow);
+        command.Parameters.AddWithValue("@Id", userId.ToString());
+        var rows = await command.ExecuteNonQueryAsync(cancellationToken);
+        return rows > 0;
+    }
+
+    public async Task<bool> UpdateActiveStatusAsync(Guid userId, bool isActive, CancellationToken cancellationToken = default)
+    {
+        await using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
+        const string sql = "UPDATE Users SET IsActive = @IsActive, UpdatedAt = @UpdatedAt WHERE Id = @Id;";
+        await using var command = new MySqlCommand(sql, connection);
+        command.Parameters.AddWithValue("@IsActive", isActive ? 1 : 0);
+        command.Parameters.AddWithValue("@UpdatedAt", DateTime.UtcNow);
+        command.Parameters.AddWithValue("@Id", userId.ToString());
+        var rows = await command.ExecuteNonQueryAsync(cancellationToken);
+        return rows > 0;
+    }
+
+    public async Task<List<UserListDto>> GetAllUsersAsync(string? roleFilter = null, bool? statusFilter = null,
+        string? sortField = null, bool sortDesc = false, CancellationToken cancellationToken = default)
+    {
+        await using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
+
+        var whereClauses = new List<string>();
+        var parameters = new Dictionary<string, object>();
+
+        if (!string.IsNullOrEmpty(roleFilter))
+        {
+            whereClauses.Add("Role = @Role");
+            parameters["@Role"] = roleFilter;
+        }
+
+        if (statusFilter.HasValue)
+        {
+            whereClauses.Add("IsActive = @IsActive");
+            parameters["@IsActive"] = statusFilter.Value ? 1 : 0;
+        }
+
+        var whereSql = whereClauses.Count > 0 ? "WHERE " + string.Join(" AND ", whereClauses) : "";
+
+        var sortFieldValid = sortField == "CreatedAt" || sortField == "FullName" || sortField == "Email" || sortField == "Role";
+        var orderBySql = sortFieldValid
+            ? $"ORDER BY {sortField} {(sortDesc ? "DESC" : "ASC")}"
+            : "ORDER BY CreatedAt DESC";
+
+        var sql = $@"
+            SELECT Id, FullName, Email, Role, IsActive, CreatedAt
+            FROM Users
+            {whereSql}
+            {orderBySql};";
+
+        await using var command = new MySqlCommand(sql, connection);
+        foreach (var (param, value) in parameters)
+        {
+            command.Parameters.AddWithValue(param, value);
+        }
+
+        await using var reader = await command.ExecuteReaderAsync(CommandBehavior.SingleResult, cancellationToken);
+        var users = new List<UserListDto>();
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            users.Add(new UserListDto
+            {
+                Id = Guid.Parse(reader.GetString("Id")),
+                FullName = reader.GetString("FullName"),
+                Email = reader.GetString("Email"),
+                Role = reader.GetString("Role"),
+                IsActive = reader.GetBoolean("IsActive"),
+                CreatedAt = reader.GetDateTime("CreatedAt")
+            });
+        }
+        return users;
     }
 }

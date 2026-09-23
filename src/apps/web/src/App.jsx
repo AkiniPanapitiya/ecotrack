@@ -9,6 +9,8 @@ import { LoginView } from './views/LoginView';
 import { ProfileView } from './views/ProfileView';
 import { KycView } from './views/KycView';
 import { KycAdminView } from './views/KycAdminView';
+import { AdminUsersView } from './views/AdminUsersView';
+import { AccessDeniedView } from './views/AccessDeniedView';
 import { PickupBookingView } from './views/PickupBookingView';
 import { DashboardView } from './views/DashboardView';
 import { ForgotPasswordView } from './views/ForgotPasswordView'; 
@@ -42,7 +44,9 @@ export const App = () => {
               <Route path="/audit-report" element={<ProtectedRoute><AuditReportView /></ProtectedRoute>} />
               <Route path="/kyc" element={<ProtectedRoute rolesAllowed={['Recycler']}><KycView /></ProtectedRoute>} />
               <Route path="/kyc-admin" element={<ProtectedRoute rolesAllowed={['Admin']}><KycAdminView /></ProtectedRoute>} />
-              <Route path="/" element={<HomeRedirect />} />
+                  <Route path="/admin/users" element={<ProtectedRoute rolesAllowed={['Admin']}><AdminUsersView /></ProtectedRoute>} />
+                  <Route path="/access-denied" element={<AccessDeniedView />} />
+                  <Route path="/" element={<HomeRedirect />} />
             </Routes>
           </main>
         </div>

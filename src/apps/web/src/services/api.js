@@ -69,6 +69,12 @@ export const kycApi = {
   reviewDocument: (documentId, data) => api.put(`/kyc/review/${documentId}`, data),
 };
 
+// ECO-16: Role & Permission Management Endpoints
+export const roleApi = {
+  getUsers: () => api.get('/admin/users'),
+  changeUserRole: (userId, data) => api.put(`/admin/users/${userId}/role`, data),
+};
+
 // ECO-15: Logistics Pickup Booking Endpoints
 export const logisticsApi = {
   createPickup: (data) => logisticsClient.post('/pickup', data),

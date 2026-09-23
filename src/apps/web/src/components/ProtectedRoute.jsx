@@ -12,8 +12,8 @@ export const ProtectedRoute = ({ children, rolesAllowed }) => {
   }
 
   if (rolesAllowed && !rolesAllowed.includes(user?.role)) {
-    // Logged in, but wrong role bounce to dashboard
-    return <Navigate to="/dashboard" replace />;
+    // Logged in, but wrong role -> show access denied page
+    return <Navigate to="/access-denied" replace />;
   }
 
   return children;
