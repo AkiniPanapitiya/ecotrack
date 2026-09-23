@@ -34,4 +34,15 @@ export const getPendingSubmissions = () => api.get('/kyc/pending');
 export const reviewDocument = (documentId, status, reviewNote) =>
   api.put(`/kyc/review/${documentId}`, { status, reviewNote });
 
+// GET /admin/users — admin: list all users with roles (Story 8)
+export const getUsers = (params) => api.get('/admin/users', { params });
+
+// PUT /admin/users/:userId/role — admin: change a user's role (Story 8)
+export const changeUserRole = (userId, data) =>
+  api.put(`/admin/users/${userId}/role`, data);
+
+// PATCH /admin/users/:userId/active — admin: toggle user active status (Story 8 + new)
+export const toggleUserActive = (userId, isActive) =>
+  api.patch(`/admin/users/${userId}/active`, { isActive });
+
 export default api;

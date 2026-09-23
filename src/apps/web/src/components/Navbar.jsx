@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Leaf, User, Shield, LogOut, FileText, LayoutDashboard, Building2, Truck, PackageSearch } from 'lucide-react';
+import { Leaf, User, Shield, LogOut, FileText, LayoutDashboard, Building2, Truck, PackageSearch, Users } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export const Navbar = () => {
@@ -56,6 +56,10 @@ export const Navbar = () => {
 
             {user?.role === 'Admin' && (
               <>
+                <Link to="/admin/users" className="nav-link" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Users size={18} />
+                  <span>User Management</span>
+                </Link>
                 <Link to="/audit-report" className="nav-link" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <FileText size={18} />
                   <span>Audit Report</span>
