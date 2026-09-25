@@ -189,19 +189,40 @@ public class PickupRepository : IPickupRepository
     {
         await using var connection = (MySqlConnection)await _connectionFactory.CreateConnectionAsync(cancellationToken);
         const string sql = @"
-            SELECT Id, UserId, RecyclerId, Category, EstimatedWeightKg, PickupAddress, ContactPhone,
-                PreferredDate, ScheduledDate, TimeSlot, ScheduledTimeSlot, SpecialInstructions,
-                Status, CreatedAt, UpdatedAt
-            FROM PickupRequests
-            WHERE Status = 'Pending'
-            ORDER BY PreferredDate ASC;";
+            SELECT pr.Id, pr.UserId, pr.RecyclerId, pr.Category, pr.EstimatedWeightKg, pr.PickupAddress, pr.ContactPhone,
+                pr.PreferredDate, pr.ScheduledDate, pr.TimeSlot, pr.ScheduledTimeSlot, pr.SpecialInstructions,
+                pr.Status, pr.CreatedAt, pr.UpdatedAt,
+                pi.Id, pi.ItemName, pi.Quantity, pi.ItemCondition, pi.EstimatedWeightKg, pi.PickupRequestId
+            FROM PickupRequests pr
+            LEFT JOIN PickupItems pi ON pi.PickupRequestId = pr.Id
+            WHERE pr.Status = 'Pending'
+            ORDER BY pr.PreferredDate ASC, pi.Id;";
 
         await using var command = new MySqlCommand(sql, connection);
         var list = new List<PickupRequest>();
+        PickupRequest? current = null;
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         while (await reader.ReadAsync(cancellationToken))
         {
-            list.Add(MapPickupRequest(reader));
+            var pickupId = Guid.Parse(reader.GetString(0));
+            if (current == null || current.Id != pickupId)
+            {
+                current = MapPickupRequest(reader);
+                current.Items = new List<PickupItem>();
+                list.Add(current);
+            }
+            if (!reader.IsDBNull(15))
+            {
+                current.Items.Add(new PickupItem
+                {
+                    Id = Guid.Parse(reader.GetString(15)),
+                    ItemName = reader.GetString(16),
+                    Quantity = reader.GetInt32(17),
+                    ItemCondition = reader.GetString(18),
+                    EstimatedWeightKg = reader.GetDecimal(19),
+                    PickupRequestId = Guid.Parse(reader.GetString(20))
+                });
+            }
         }
         return list;
     }
@@ -210,21 +231,42 @@ public class PickupRepository : IPickupRepository
     {
         await using var connection = (MySqlConnection)await _connectionFactory.CreateConnectionAsync(cancellationToken);
         const string sql = @"
-            SELECT Id, UserId, RecyclerId, Category, EstimatedWeightKg, PickupAddress, ContactPhone,
-                PreferredDate, ScheduledDate, TimeSlot, ScheduledTimeSlot, SpecialInstructions,
-                Status, CreatedAt, UpdatedAt
-            FROM PickupRequests
-            WHERE RecyclerId = @RecyclerId
-            ORDER BY ScheduledDate ASC;";
+            SELECT pr.Id, pr.UserId, pr.RecyclerId, pr.Category, pr.EstimatedWeightKg, pr.PickupAddress, pr.ContactPhone,
+                pr.PreferredDate, pr.ScheduledDate, pr.TimeSlot, pr.ScheduledTimeSlot, pr.SpecialInstructions,
+                pr.Status, pr.CreatedAt, pr.UpdatedAt,
+                pi.Id, pi.ItemName, pi.Quantity, pi.ItemCondition, pi.EstimatedWeightKg, pi.PickupRequestId
+            FROM PickupRequests pr
+            LEFT JOIN PickupItems pi ON pi.PickupRequestId = pr.Id
+            WHERE pr.RecyclerId = @RecyclerId
+            ORDER BY pr.ScheduledDate ASC, pi.Id;";
 
         await using var command = new MySqlCommand(sql, connection);
         command.Parameters.AddWithValue("@RecyclerId", recyclerId.ToString());
 
         var list = new List<PickupRequest>();
+        PickupRequest? current = null;
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         while (await reader.ReadAsync(cancellationToken))
         {
-            list.Add(MapPickupRequest(reader));
+            var pickupId = Guid.Parse(reader.GetString(0));
+            if (current == null || current.Id != pickupId)
+            {
+                current = MapPickupRequest(reader);
+                current.Items = new List<PickupItem>();
+                list.Add(current);
+            }
+            if (!reader.IsDBNull(15))
+            {
+                current.Items.Add(new PickupItem
+                {
+                    Id = Guid.Parse(reader.GetString(15)),
+                    ItemName = reader.GetString(16),
+                    Quantity = reader.GetInt32(17),
+                    ItemCondition = reader.GetString(18),
+                    EstimatedWeightKg = reader.GetDecimal(19),
+                    PickupRequestId = Guid.Parse(reader.GetString(20))
+                });
+            }
         }
         return list;
     }

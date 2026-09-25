@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
+import { useAuth } from '../context/AuthContext';
 import { logisticsApi } from '../services/api';
-import { Truck, Package, Calendar, Clock, MapPin, Phone, AlertCircle, CheckCircle2, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Truck, Package, Calendar, Clock, MapPin, Phone, AlertCircle, CheckCircle2, ArrowRight, ShieldCheck, Plus, X } from 'lucide-react';
 
 const CATEGORIES = [
   { id: 'Computing & Laptops', name: 'Computing & Laptops', desc: 'Desktops, Laptops, Servers, Monitors, Keyboards' },
@@ -16,7 +17,8 @@ const TIME_SLOTS = [
   'Evening (15:00 - 18:00)',
 ];
 
-export const PickupBookingView = () => {
+export const RecyclerPickupBookingView = () => {
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
     category: 'Computing & Laptops',
     estimatedWeightKg: '',
@@ -27,7 +29,6 @@ export const PickupBookingView = () => {
     specialInstructions: '',
   });
   const [items, setItems] = useState([{ itemName: '', quantity: 1, condition: 'Used' }]);
-
   const [errors, setErrors] = useState({});
   const [serverError, setServerError] = useState('');
   const [successBooking, setSuccessBooking] = useState(null);
@@ -35,44 +36,17 @@ export const PickupBookingView = () => {
 
   const validateForm = () => {
     const newErrors = {};
-
-    if (!formData.category) {
-      newErrors.category = 'Please select an e-waste category.';
-    }
-
+    if (!formData.category) newErrors.category = 'Please select an e-waste category.';
     const weight = parseFloat(formData.estimatedWeightKg);
-    if (isNaN(weight) || weight <= 0) {
-      newErrors.estimatedWeightKg = 'Please enter a valid estimated weight in Kg.';
-    } else if (weight > 10000) {
-      newErrors.estimatedWeightKg = 'Maximum single pickup weight limit is 10,000 kg.';
-    }
-
-    if (!formData.pickupAddress.trim()) {
-      newErrors.pickupAddress = 'Pickup address is required.';
-    } else if (formData.pickupAddress.trim().length < 5) {
-      newErrors.pickupAddress = 'Address must be at least 5 characters.';
-    }
-
-    if (!formData.contactPhone.trim()) {
-      newErrors.contactPhone = 'Contact phone number is required.';
-    } else if (!/^\d{10}$/.test(formData.contactPhone.trim())) {
-      newErrors.contactPhone = 'Contact phone number must be exactly 10 digits.';
-    }
-
-    if (!formData.preferredDate) {
-      newErrors.preferredDate = 'Please select a preferred pickup date.';
-    } else {
-      const selected = new Date(formData.preferredDate);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      if (selected < today) {
-        newErrors.preferredDate = 'Pickup date cannot be in the past.';
-      }
-    }
-
-    if (!formData.timeSlot) {
-      newErrors.timeSlot = 'Please select a preferred time slot.';
-    }
+    if (isNaN(weight) || weight <= 0) newErrors.estimatedWeightKg = 'Please enter a valid estimated weight in Kg.';
+    else if (weight > 10000) newErrors.estimatedWeightKg = 'Maximum single pickup weight limit is 10,000 kg.';
+    if (!formData.pickupAddress.trim()) newErrors.pickupAddress = 'Pickup address is required.';
+    else if (formData.pickupAddress.trim().length < 5) newErrors.pickupAddress = 'Address must be at least 5 characters.';
+    if (!formData.contactPhone.trim()) newErrors.contactPhone = 'Contact phone number is required.';
+    else if (!/^\d{10}$/.test(formData.contactPhone.trim())) newErrors.contactPhone = 'Contact phone number must be exactly 10 digits.';
+    if (!formData.preferredDate) newErrors.preferredDate = 'Please select a preferred pickup date.';
+    else { const selected = new Date(formData.preferredDate); const today = new Date(); today.setHours(0,0,0,0); if (selected < today) newErrors.preferredDate = 'Pickup date cannot be in the past.'; }
+    if (!formData.timeSlot) newErrors.timeSlot = 'Please select a preferred time slot.';
 
     const validItems = items.filter(i => i.itemName.trim());
     if (validItems.length === 0) newErrors.items = 'Add at least one item to collect.';
@@ -90,18 +64,14 @@ export const PickupBookingView = () => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-    if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: '' }));
-    }
+    if (errors[name]) setErrors(prev => ({ ...prev, [name]: '' }));
     setServerError('');
   };
 
   const handlePhoneChange = (e) => {
     const digitsOnly = e.target.value.replace(/\D/g, '').slice(0, 10);
     setFormData(prev => ({ ...prev, contactPhone: digitsOnly }));
-    if (errors.contactPhone) {
-      setErrors(prev => ({ ...prev, contactPhone: '' }));
-    }
+    if (errors.contactPhone) setErrors(prev => ({ ...prev, contactPhone: '' }));
     setServerError('');
   };
 
@@ -112,11 +82,7 @@ export const PickupBookingView = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
-
-    setLoading(true);
-    setServerError('');
-    setSuccessBooking(null);
-
+    setLoading(true); setServerError(''); setSuccessBooking(null);
     const payload = {
       category: formData.category,
       estimatedWeightKg: parseFloat(formData.estimatedWeightKg),
@@ -132,13 +98,11 @@ export const PickupBookingView = () => {
         unitPrice: 0,
       })),
     };
-
     try {
       const res = await logisticsApi.createPickup(payload);
       setSuccessBooking(res.data);
     } catch (err) {
-      const msg = err.response?.data?.message || 'Failed to schedule pickup request. Please try again.';
-      setServerError(msg);
+      setServerError(err.response?.data?.message || 'Failed to schedule pickup request. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -152,62 +116,37 @@ export const PickupBookingView = () => {
             <Truck size={32} style={{ color: 'var(--primary)' }} />
           </div>
           <h1 style={{ fontSize: '1.75rem', fontWeight: 800, marginBottom: '0.5rem' }}>
-            Schedule E-Waste Pickup
+            Request Pickup Collection
           </h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
-            Book a certified eco-friendly collection slot for your electronic waste items
+            Submit e-waste items for valuation — the EcoTrack team will collect and assess your items
           </p>
         </div>
 
-        {serverError && (
-          <div className="alert alert-danger" style={{ marginBottom: '1.5rem' }}>
-            <AlertCircle size={18} />
-            <span>{serverError}</span>
-          </div>
-        )}
-
+        {serverError && <div className="alert alert-danger" style={{ marginBottom: '1.5rem' }}><AlertCircle size={18} /><span>{serverError}</span></div>}
         {successBooking && (
-          <div className="alert alert-success" style={{ marginBottom: '1.5rem' }}>
+          <div className="alert alert-success" style={{ marginBottom: '1.5rem', padding: '1rem 1.25rem' }}>
             <CheckCircle2 size={24} style={{ color: 'var(--success)', flexShrink: 0 }} />
             <div>
-              <strong style={{ fontSize: '1.05rem', display: 'block', marginBottom: '0.25rem' }}>
-                Pickup Scheduled Successfully!
-              </strong>
+              <strong style={{ fontSize: '1.05rem', display: 'block', marginBottom: '0.25rem' }}>Pickup Request Submitted!</strong>
               <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-                Booking Reference ID: <code style={{ background: 'rgba(0,0,0,0.3)', padding: '2px 6px', borderRadius: '4px' }}>{successBooking.id}</code><br />
+                Request ID: <code style={{ background: 'rgba(0,0,0,0.3)', padding: '2px 6px', borderRadius: '4px' }}>{successBooking.id}</code><br />
                 Category: <strong>{successBooking.category}</strong> ({successBooking.estimatedWeightKg} kg)<br />
-                Scheduled for: <strong>{new Date(successBooking.preferredDate).toLocaleDateString()}</strong> ({successBooking.timeSlot})
+                Preferred: <strong>{new Date(successBooking.preferredDate).toLocaleDateString()}</strong> ({successBooking.timeSlot})
               </div>
             </div>
           </div>
         )}
 
         <form onSubmit={handleSubmit}>
-          {/* E-Waste Category Grid */}
           <div className="form-group">
-            <label className="form-label" style={{ fontWeight: 700, marginBottom: '0.75rem' }}>
-              Select E-Waste Category *
-            </label>
+            <label className="form-label" style={{ fontWeight: 700, marginBottom: '0.75rem' }}>Select E-Waste Category *</label>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.75rem' }}>
               {CATEGORIES.map(cat => (
-                <div
-                  key={cat.id}
-                  onClick={() => { setFormData(prev => ({ ...prev, category: cat.id })); if (errors.category) setErrors(prev => ({ ...prev, category: '' })); }}
-                  style={{
-                    padding: '1rem',
-                    borderRadius: 'var(--radius-md)',
-                    border: formData.category === cat.id ? '2px solid var(--primary)' : '1px solid var(--border-color)',
-                    background: formData.category === cat.id ? 'var(--primary-light)' : 'rgba(255,255,255,0.02)',
-                    cursor: 'pointer',
-                    transition: 'all var(--transition-fast)'
-                  }}
-                >
-                  <div style={{ fontWeight: 700, fontSize: '0.95rem', color: formData.category === cat.id ? 'var(--primary)' : 'var(--text-primary)', marginBottom: '0.25rem' }}>
-                    {cat.name}
-                  </div>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.3 }}>
-                    {cat.desc}
-                  </div>
+                <div key={cat.id} onClick={() => { setFormData(prev => ({ ...prev, category: cat.id })); if (errors.category) setErrors(prev => ({ ...prev, category: '' })); }}
+                  style={{ padding: '1rem', borderRadius: 'var(--radius-md)', border: formData.category === cat.id ? '2px solid var(--primary)' : '1px solid var(--border-color)', background: formData.category === cat.id ? 'var(--primary-light)' : 'rgba(255,255,255,0.02)', cursor: 'pointer' }}>
+                  <div style={{ fontWeight: 700, fontSize: '0.95rem', color: formData.category === cat.id ? 'var(--primary)' : 'var(--text-primary)', marginBottom: '0.25rem' }}>{cat.name}</div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.3 }}>{cat.desc}</div>
                 </div>
               ))}
             </div>
@@ -218,37 +157,16 @@ export const PickupBookingView = () => {
             <div className="form-group">
               <label className="form-label">Estimated Weight (Kg) *</label>
               <div style={{ position: 'relative' }}>
-                <input
-                  type="number"
-                  step="0.1"
-                  name="estimatedWeightKg"
-                  className="form-input"
-                  placeholder="e.g. 15.5"
-                  value={formData.estimatedWeightKg}
-                  onChange={handleChange}
-                />
-                <span style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-                  Kg
-                </span>
+                <input type="number" step="0.1" name="estimatedWeightKg" className="form-input" placeholder="e.g. 15.5" value={formData.estimatedWeightKg} onChange={handleChange} />
+                <span style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Kg</span>
               </div>
               {errors.estimatedWeightKg && <div className="form-error"><AlertCircle size={14} />{errors.estimatedWeightKg}</div>}
             </div>
-
             <div className="form-group">
               <label className="form-label">Contact Phone *</label>
               <div style={{ position: 'relative' }}>
                 <Phone size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
-                <input
-                  type="tel"
-                  inputMode="numeric"
-                  name="contactPhone"
-                  className="form-input"
-                  style={{ paddingLeft: '38px' }}
-                  placeholder="0771234567"
-                  maxLength={10}
-                  value={formData.contactPhone}
-                  onChange={handlePhoneChange}
-                />
+                <input type="tel" inputMode="numeric" name="contactPhone" className="form-input" style={{ paddingLeft: '38px' }} placeholder="0771234567" maxLength={10} value={formData.contactPhone} onChange={handlePhoneChange} />
               </div>
               {errors.contactPhone && <div className="form-error"><AlertCircle size={14} />{errors.contactPhone}</div>}
             </div>
@@ -258,14 +176,7 @@ export const PickupBookingView = () => {
             <label className="form-label">Pickup Address *</label>
             <div style={{ position: 'relative' }}>
               <MapPin size={16} style={{ position: 'absolute', left: '12px', top: '14px', color: 'var(--text-secondary)' }} />
-              <textarea
-                name="pickupAddress"
-                className="form-input"
-                style={{ paddingLeft: '38px', minHeight: '75px', resize: 'vertical' }}
-                placeholder="No. 45, Green Way, Industrial Park, Colombo"
-                value={formData.pickupAddress}
-                onChange={handleChange}
-              />
+              <textarea name="pickupAddress" className="form-input" style={{ paddingLeft: '38px', minHeight: '75px', resize: 'vertical' }} placeholder="No. 45, Green Way, Industrial Park, Colombo" value={formData.pickupAddress} onChange={handleChange} />
             </div>
             {errors.pickupAddress && <div className="form-error"><AlertCircle size={14} />{errors.pickupAddress}</div>}
           </div>
@@ -275,62 +186,40 @@ export const PickupBookingView = () => {
               <label className="form-label">Preferred Date *</label>
               <div style={{ position: 'relative' }}>
                 <Calendar size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
-                <input
-                  type="date"
-                  name="preferredDate"
-                  className="form-input"
-                  style={{ paddingLeft: '38px' }}
-                  value={formData.preferredDate}
-                  onChange={handleChange}
-                />
+                <input type="date" name="preferredDate" className="form-input" style={{ paddingLeft: '38px' }} value={formData.preferredDate} onChange={handleChange} />
               </div>
               {errors.preferredDate && <div className="form-error"><AlertCircle size={14} />{errors.preferredDate}</div>}
             </div>
-
             <div className="form-group">
               <label className="form-label">Time Slot *</label>
               <div style={{ position: 'relative' }}>
                 <Clock size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
-                <select
-                  name="timeSlot"
-                  className="form-input"
-                  style={{ paddingLeft: '38px' }}
-                  value={formData.timeSlot}
-                  onChange={handleChange}
-                >
-                  {TIME_SLOTS.map(slot => (
-                    <option key={slot} value={slot}>{slot}</option>
-                  ))}
+                <select name="timeSlot" className="form-input" style={{ paddingLeft: '38px' }} value={formData.timeSlot} onChange={handleChange}>
+                  {TIME_SLOTS.map(slot => <option key={slot} value={slot}>{slot}</option>)}
                 </select>
               </div>
               {errors.timeSlot && <div className="form-error"><AlertCircle size={14} />{errors.timeSlot}</div>}
             </div>
           </div>
 
-          <div className="form-group">
-            <label className="form-label">Special Instructions (Optional)</label>
-            <textarea
-              name="specialInstructions"
-              className="form-input"
-              style={{ minHeight: '60px', resize: 'vertical' }}
-              placeholder="e.g. Items are packed in 2 boxes by the security gate."
-              value={formData.specialInstructions}
-              onChange={handleChange}
-            />
-          </div>
-
           <div style={{ marginTop: '0.25rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-              <label style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-primary)', margin: 0 }}>Items to Collect *</label>
+              <label className="form-label" style={{ fontWeight: 700, margin: 0 }}>Items to Collect *</label>
               <button type="button" onClick={handleAddItem} className="btn btn-sm" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                + Add Item
+                <Plus size={14} /> Add Item
               </button>
             </div>
+
             {errors.items && <div className="form-error" style={{ marginBottom: '0.5rem' }}><AlertCircle size={14} />{errors.items}</div>}
+
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
               {items.map((item, idx) => (
                 <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 80px 130px 36px', gap: '0.5rem', alignItems: 'center', padding: '0.75rem', background: 'rgba(255,255,255,0.02)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
-                  <input type="text" className="form-input" placeholder="Item name (e.g. Old Laptop)" value={item.itemName} onChange={e => handleItemChange(idx, 'itemName', e.target.value)} style={{ paddingLeft: '10px' }} />
+                  <input
+                    type="text" className="form-input" placeholder="Item name (e.g. Old Laptop)"
+                    value={item.itemName} onChange={e => handleItemChange(idx, 'itemName', e.target.value)}
+                    style={{ paddingLeft: '10px' }}
+                  />
                   <input type="number" min="1" className="form-input" placeholder="Qty" value={item.quantity} onChange={e => handleItemChange(idx, 'quantity', e.target.value)} style={{ textAlign: 'center', padding: '0.45rem 0.5rem' }} />
                   <select className="form-input" value={item.condition} onChange={e => handleItemChange(idx, 'condition', e.target.value)} style={{ padding: '0.45rem 0.5rem' }}>
                     <option value="Used">Used</option>
@@ -338,19 +227,21 @@ export const PickupBookingView = () => {
                     <option value="Damaged">Damaged</option>
                     <option value="Refurbished">Refurbished</option>
                   </select>
-                  <button type="button" onClick={() => handleRemoveItem(idx)} style={{ background: 'var(--danger)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0.3rem' }}>×</button>
+                  <button type="button" onClick={() => handleRemoveItem(idx)} style={{ background: 'var(--danger)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0.3rem' }}>
+                    <X size={14} />
+                  </button>
                 </div>
               ))}
             </div>
           </div>
 
-          <button
-            type="submit"
-            className="btn btn-primary"
-            style={{ width: '100%', padding: '0.9rem', fontSize: '1rem', marginTop: '0.5rem' }}
-            disabled={loading}
-          >
-            {loading ? 'Booking Collection...' : 'Confirm Pickup Booking'}
+          <div className="form-group">
+            <label className="form-label">Special Instructions (Optional)</label>
+            <textarea name="specialInstructions" className="form-input" style={{ minHeight: '60px', resize: 'vertical' }} placeholder="e.g. Items are packed in 2 boxes by the security gate." value={formData.specialInstructions} onChange={handleChange} />
+          </div>
+
+          <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '0.9rem', fontSize: '1rem', marginTop: '0.5rem' }} disabled={loading}>
+            {loading ? 'Submitting Request...' : 'Submit Pickup Request'}
             <ArrowRight size={18} />
           </button>
         </form>
