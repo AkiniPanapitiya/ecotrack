@@ -177,6 +177,47 @@ services:
       retries: 5
       start_period: 30s
 
+  # Prometheus Monitoring Server (Port 9090)
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    container_name: ecotrack-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+      - "--web.console.templates=/usr/share/prometheus/consoles"
+      - "--web.enable-lifecycle"
+    networks:
+      - ecotrack-network
+    restart: unless-stopped
+
+  # Grafana Dashboard (Port 3000)
+  grafana:
+    image: grafana/grafana:11.2.0
+    container_name: ecotrack-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/var/lib/grafana/dashboards/ecotrack-overview.json
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./monitoring/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    networks:
+      - ecotrack-network
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
 # Networks
 networks:
   ecotrack-network:
@@ -188,3 +229,8 @@ volumes:
     driver: local
   db-data:
     driver: local
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
+
