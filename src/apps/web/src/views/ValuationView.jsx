@@ -21,8 +21,8 @@ function ValuationView() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCondition, setFilterCondition] = useState('All');
   const [filterStatus, setFilterStatus] = useState('All');
-  const filterRef = useRef(null);
-  const selectAllRef = useRef(null);
+  // Per-item valuation map: itemId -> { price, condition } or null
+  const [valuationMap, setValuationMap] = useState({});
 
   // Reload when user changes (login/logout)
   useEffect(() => {
@@ -43,8 +43,9 @@ function ValuationView() {
     setLoading(true);
     setError('');
     try {
-      const data = await logisticsApi.getRecyclerSchedule(user.userId);
-      const sorted = [...data].sort((a, b) =>
+      const res = await logisticsApi.getRecyclerSchedule(user.userId);
+      const pickupsData = Array.isArray(res.data) ? res.data : [];
+      const sorted = [...pickupsData].sort((a, b) =>
         new Date(b.createdAt) - new Date(a.createdAt)
       );
       setPickups(sorted);
@@ -65,8 +66,10 @@ function ValuationView() {
       return;
     }
     setSelectedPickup(pickup);
-    setSelectedItems(pickup.items || []);
+    const items = pickup.items || [];
+    setSelectedItems(items);
     clearMessages();
+    loadExistingValuation(items);
   };
 
   const handleItemToggle = (item) => {
@@ -79,8 +82,8 @@ function ValuationView() {
       current.push(item);
     }
     setSelectedItems(current);
-    setExistingValuation(null);
-    clearMessages();
+    // Reload valuations for the new selection — don't reset existing form data
+    loadExistingValuation(current);
   };
 
   const selectAllItems = () => {
@@ -98,40 +101,31 @@ function ValuationView() {
 
   const loadExistingValuation = useCallback(async (itemIds) => {
     if (itemIds.length === 0) {
-      setExistingValuation(null);
+      setValuationMap({});
       return;
     }
     setError('');
-    setMessage('');
-    try {
-      // Check each selected item for existing valuation
-      const results = await Promise.all(
-        itemIds.map(async (item) => {
-          try {
-            const res = await valuationApi.getValuation(item.id);
-            return { item, valuation: res.data?.valuation || null };
-          } catch {
-            return { item, valuation: null };
+    // Build a map of itemId -> valuation data from API
+    const newMap = { ...valuationMap };
+    await Promise.all(
+      itemIds.map(async (item) => {
+        try {
+          const res = await valuationApi.getValuation(item.id);
+          if (res.data?.valuation) {
+            newMap[item.id] = {
+              price: res.data.valuation.price,
+              condition: res.data.valuation.condition,
+            };
+          } else {
+            delete newMap[item.id];
           }
-        })
-      );
-      const found = results.find(r => r.valuation);
-      if (found) {
-        setExistingValuation({
-          ...found.valuation,
-          items: results.map(r => r.item),
-        });
-        setPrice(found.valuation?.price?.toString() || '');
-        setCondition(found.valuation?.condition || '');
-      } else {
-        setExistingValuation(null);
-        setPrice('');
-        setCondition('');
-      }
-    } catch (err) {
-      setError('Failed to check valuations.');
-    }
-  }, []);
+        } catch {
+          delete newMap[item.id];
+        }
+      })
+    );
+    setValuationMap(newMap);
+  }, [valuationMap]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -154,23 +148,41 @@ function ValuationView() {
     setMessage('');
 
     try {
-      if (existingValuation) {
-        // Update existing valuation — use the first item's ID
-        const firstItem = selectedItems[0];
-        await valuationApi.updateValuation(firstItem.id, { price: priceNum, condition });
-        setMessage(`✅ Valuation updated! ${selectedItems.length} item(s) at ${priceNum.toLocaleString('en-SL')} LKR (${condition}).`);
-      } else {
-        // Create new valuation for each selected item
-        for (const item of selectedItems) {
-          await valuationApi.createValuation(item.id, { price: priceNum, condition });
-        }
-        setMessage(`✅ Valuation saved! ${selectedItems.length} item(s) at ${priceNum.toLocaleString('en-SL')} LKR (${condition}).`);
+      // Determine which items need create vs update
+      const toUpdate = selectedItems.filter(item => valuationMap[item.id]);
+      const toCreate = selectedItems.filter(item => !valuationMap[item.id]);
+
+      // Update existing valuations
+      for (const item of toUpdate) {
+        await valuationApi.updateValuation(item.id, { price: priceNum, condition });
       }
-      setExistingValuation(null);
-      setPrice('');
-      setCondition('');
+      // Create new valuations
+      for (const item of toCreate) {
+        await valuationApi.createValuation(item.id, { price: priceNum, condition });
+      }
+
+      const total = selectedItems.length;
+      const updated = toUpdate.length;
+      const created = toCreate.length;
+      let msg;
+      if (created > 0 && updated > 0) {
+        msg = `Valuation updated for ${updated} item(s) and created for ${created} new item(s). Total: ${total} item(s) at ${priceNum.toLocaleString('en-SL')} LKR (${condition}).`;
+      } else if (updated > 0) {
+        msg = `Valuation updated successfully. ${total} item(s) now valued at ${priceNum.toLocaleString('en-SL')} LKR (${condition}).`;
+      } else {
+        msg = `Valuation saved successfully. ${total} item(s) valued at ${priceNum.toLocaleString('en-SL')} LKR (${condition}).`;
+      }
+      setMessage(msg);
+
+      // Refresh valuation map for the current selection
+      loadExistingValuation(selectedItems);
     } catch (err) {
-      const msg = err.response?.data?.message || 'Operation failed. Please try again.';
+      const msg = err.response?.data?.message
+        || err.response?.data?.title
+        || (err.response?.data?.errors?.price?.[0])
+        || (err.response?.data?.errors?.condition?.[0])
+        || (err.response?.data?.errors?.dto?.[0])
+        || `HTTP ${err.response?.status || 'unknown'}: ${err.message || 'Request failed'}`;
       setError(msg);
     } finally {
       setSubmitting(false);
@@ -190,19 +202,22 @@ function ValuationView() {
     }
   };
 
-  const filteredItems = selectedItems.filter(item => {
+  const allItems = selectedPickup?.items || [];
+  const filteredItems = allItems.filter(item => {
     const matchSearch = !searchTerm ||
       item.itemName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.id?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchCondition = filterCondition === 'All' || item.itemCondition === filterCondition;
-    const hasValuation = existingValuation && existingValuation.items.some(i => i.id === item.id);
+    // Filter by per-item valuation condition (Good/Fair/Poor)
+    const itemValuation = valuationMap[item.id];
+    const itemValuationCondition = itemValuation?.condition || null;
+    const matchCondition = filterCondition === 'All' ||
+      (filterCondition !== 'All' && itemValuationCondition === filterCondition);
+    const hasValuation = !!valuationMap[item.id];
     const matchStatus = filterStatus === 'All' ||
       (filterStatus === 'Valued' && hasValuation) ||
       (filterStatus === 'Not Valued' && !hasValuation);
     return matchSearch && matchCondition && matchStatus;
   });
-
-  const valuedCount = existingValuation ? existingValuation.items.length : 0;
 
   if (loading) {
     return (
@@ -357,7 +372,7 @@ function ValuationView() {
                   </span>
                 )}
               </h2>
-              {selectedItems.length > 1 && (
+              {allItems.length > 1 && (
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
                   <button
                     className="btn btn-secondary"
@@ -410,17 +425,17 @@ function ValuationView() {
               </select>
             </div>
 
-            {selectedItems.length === 0 && (
+            {allItems.length === 0 && (
               <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', textAlign: 'center', padding: '1rem' }}>
-                No items selected. Click items above or use «Select All».
+                No items found in this pickup request.
               </p>
             )}
 
-            {selectedItems.length > 0 && (
+            {allItems.length > 0 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '360px', overflowY: 'auto' }}>
-                {filteredItems.length === 0 && searchTerm !== '' && (
+                {filteredItems.length === 0 && (
                   <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', textAlign: 'center', padding: '1rem' }}>
-                    No items match the search.
+                    {searchTerm !== '' ? 'No items match the search.' : 'No items match the current filters.'}
                   </p>
                 )}
                 {filteredItems.map((item) => {
@@ -456,9 +471,9 @@ function ValuationView() {
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'capitalize' }}>
-                          {item.itemCondition}
+                          {valuationMap[item.id]?.condition || item.itemCondition}
                         </span>
-                        {isValued && (
+                        {valuationMap[item.id] && (
                           <CheckCircle2 size={14} style={{ color: 'var(--success)' }} />
                         )}
                       </div>
@@ -482,8 +497,8 @@ function ValuationView() {
               </p>
             ) : (
               <form onSubmit={handleSubmit}>
-                {/* Existing valuation info */}
-                {existingValuation && (
+                {/* Per-item valuation info */}
+                {selectedItems.length > 0 && Object.keys(valuationMap).length > 0 && (
                   <div style={{
                     padding: '0.75rem 1rem',
                     background: 'rgba(16, 185, 129, 0.1)',
@@ -495,13 +510,16 @@ function ValuationView() {
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.4rem' }}>
                       <CheckCircle2 size={14} />
-                      <strong style={{ fontWeight: 600 }}>Existing Valuation</strong>
+                      <strong style={{ fontWeight: 600 }}>Existing Valuation{" "}
+                        {Object.keys(valuationMap).length > 1 && (
+                          <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>
+                            ({Object.keys(valuationMap).length} items)
+                          </span>
+                        )}
+                      </strong>
                     </div>
                     <div style={{ color: 'var(--text-muted)', fontSize: '0.78rem', marginBottom: '0.3rem' }}>
-                      {existingValuation.items.length} item{existingValuation.items.length !== 1 ? 's' : ''} already valued
-                    </div>
-                    <div style={{ fontWeight: 600 }}>
-                      {parseFloat(existingValuation.price).toLocaleString('en-SL')} LKR — {existingValuation.condition}
+                      {Object.keys(valuationMap).length} of {selectedItems.length} selected items already valued
                     </div>
                   </div>
                 )}

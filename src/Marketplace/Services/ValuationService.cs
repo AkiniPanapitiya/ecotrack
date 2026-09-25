@@ -36,7 +36,7 @@ public class ValuationService : IValuationService
         // Check if valuation already exists for this item
         var existing = await _valuationRepository.GetByPickupItemIdAsync(pickupItemId, cancellationToken);
         if (existing != null)
-            return (false, 409, "A valuation already exists for this item. Use PUT to update it.", null);
+            return (false, 409, "This item has already been valued. Please update the existing valuation instead.", null);
 
         var valuation = new ValuationResponseDto
         {

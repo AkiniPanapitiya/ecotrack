@@ -10,9 +10,30 @@ using EcoTrack.MarketplaceService.Services;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
+    });
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+// Configure CORS — allow frontend origins (Vite dev server)
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowFrontend", policy =>
+    {
+        policy.WithOrigins(
+                "http://localhost:3000",
+                "http://localhost:5173",
+                "http://127.0.0.1:5173",
+                "http://localhost:5174",
+                "http://127.0.0.1:5174")
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials();
+    });
+});
 
 // Configure JWT Authentication (same key as Identity service — tokens are shared)
 var jwtSecretKey = builder.Configuration["Jwt:SecretKey"]
@@ -62,7 +83,9 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+// app.UseHttpsRedirection(); // Disabled — browser CORS preflight fails on HTTP redirect
+
+app.UseCors("AllowFrontend");
 
 // Auth middleware — must come before MapControllers
 app.UseAuthentication();
