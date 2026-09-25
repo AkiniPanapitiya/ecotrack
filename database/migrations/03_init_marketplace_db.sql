@@ -1,5 +1,6 @@
 -- =============================================================================
 -- EcoTrack Marketplace Database Migration Script
+-- Story 17: E-Waste Item Valuation (E5.1)
 -- Target Database: ecotrack_marketplace_db
 -- =============================================================================
 
@@ -10,6 +11,10 @@ CREATE DATABASE IF NOT EXISTS `ecotrack_marketplace_db`
 USE `ecotrack_marketplace_db`;
 
 -- 1. Item Valuations Table
+-- Links collected pickup items to their resale valuations.
+-- One valuation per pickup item (unique constraint).
+-- PickupItemId  → PickupItems in ecotrack_logistics_db  (validated in app code)
+-- RecyclerId    → RecyclerProfiles in ecotrack_identity_db (validated in app code)
 CREATE TABLE IF NOT EXISTS `ItemValuations` (
     `Id` VARCHAR(36) NOT NULL PRIMARY KEY,
     `PickupItemId` VARCHAR(36) NOT NULL,
