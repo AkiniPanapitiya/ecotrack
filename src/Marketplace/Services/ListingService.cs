@@ -34,8 +34,8 @@ public class ListingService : IListingService
             return (false, 409, "A listing already exists for this valuation. Use PUT to update it.", null);
 
         // Get valuation to build related data
-        var listingWithValuation = await _listingRepository.GetByValuationIdAsync(valuationId, cancellationToken);
-        if (listingWithValuation == null)
+        var valuation = await _listingRepository.GetValuationByIdAsync(valuationId, cancellationToken);
+        if (valuation == null)
             return (false, 404, "Valuation not found.", null);
 
         var listing = new ListingResponseDto
@@ -50,7 +50,7 @@ public class ListingService : IListingService
             Status = "Available",
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,
-            Valuation = listingWithValuation.Valuation
+            Valuation = valuation
         };
 
         var created = await _listingRepository.CreateAsync(listing, cancellationToken);

@@ -158,7 +158,7 @@ public class ValuationServiceTests
 
         Assert.False(success);
         Assert.Equal(409, statusCode);
-        Assert.Contains("already exists", message);
+        Assert.Contains("already been valued", message);
         Assert.Null(valuation);
         _repoMock.Verify(r => r.CreateAsync(It.IsAny<ValuationResponseDto>(), _ct), Times.Never);
     }

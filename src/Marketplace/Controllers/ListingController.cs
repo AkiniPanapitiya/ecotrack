@@ -45,6 +45,7 @@ public class ListingController : ControllerBase
 
     /// GET /api/listings — Browse/search available listings ( authenticated users, public browse)
     [HttpGet]
+    [AllowAnonymous]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> BrowseListings(
         [FromQuery] string? keyword = null,
@@ -72,6 +73,7 @@ public class ListingController : ControllerBase
 
     /// GET /api/listings/{id} — Get listing by ID (authenticated users)
     [HttpGet("{id:guid}")]
+    [AllowAnonymous]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetListing(
@@ -147,5 +149,37 @@ public class ListingController : ControllerBase
             return StatusCode(statusCode, new { message });
 
         return Ok(new { message });
+    }
+
+    [HttpPost("upload-photo")]
+    [Authorize(Roles = "Recycler")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> UploadPhoto(IFormFile? file, CancellationToken cancellationToken = default)
+    {
+        if (file == null || file.Length == 0)
+            return BadRequest(new { message = "No file uploaded." });
+
+        if (file.Length > 5 * 1024 * 1024)
+            return BadRequest(new { message = "File size must not exceed 5 MB." });
+
+        var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".webp" };
+        var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+        if (!allowedExtensions.Contains(ext))
+            return BadRequest(new { message = "Invalid file type. Allowed: JPG, PNG, WEBP." });
+
+        var uploadDir = Path.Combine(AppContext.BaseDirectory, "uploads", "listings");
+        Directory.CreateDirectory(uploadDir);
+
+        var uniqueName = $"{Guid.NewGuid()}{ext}";
+        var filePath = Path.Combine(uploadDir, uniqueName);
+
+        await using (var stream = new FileStream(filePath, FileMode.Create))
+        {
+            await file.CopyToAsync(stream, cancellationToken);
+        }
+
+        var photoPath = $"/uploads/listings/{uniqueName}";
+        return Ok(new { photoPath });
     }
 }

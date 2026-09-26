@@ -40,29 +40,23 @@ public class ListingRepository : IListingRepository
         return null;
     }
 
-    public async Task<ListingResponseDto?> GetByValuationIdAsync(Guid valuationId, CancellationToken cancellationToken = default)
+    public async Task<ValuationResponseDto?> GetValuationByIdAsync(Guid valuationId, CancellationToken cancellationToken = default)
     {
         await using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
         const string sql = @"
-            SELECT l.Id AS l_Id, l.ValuationId AS l_ValuationId, l.RecyclerId AS l_RecyclerId,
-                   l.Title AS l_Title, l.Description AS l_Description,
-                   l.Price AS l_Price, l.PhotoPath AS l_PhotoPath, l.Status AS l_Status,
-                   l.IsDeleted AS l_IsDeleted,
-                   l.CreatedAt AS l_CreatedAt, l.UpdatedAt AS l_UpdatedAt,
-                   v.Id AS v_Id, v.PickupItemId AS v_PickupItemId,
+            SELECT v.Id AS v_Id, v.PickupItemId AS v_PickupItemId,
                    v.Price AS v_Price, v.Condition AS v_Condition,
                    v.CreatedAt AS v_CreatedAt, v.UpdatedAt AS v_UpdatedAt,
                    pi.ItemName, pi.Quantity
-            FROM Listings l
-            INNER JOIN ItemValuations v ON v.Id = l.ValuationId
+            FROM ItemValuations v
             INNER JOIN ecotrack_logistics_db.PickupItems pi ON pi.Id = v.PickupItemId
-            WHERE l.ValuationId = @ValuationId AND l.IsDeleted = 0
+            WHERE v.Id = @ValuationId
             LIMIT 1;";
         await using var command = new MySqlCommand(sql, connection);
         command.Parameters.AddWithValue("@ValuationId", valuationId.ToString());
         await using var reader = await command.ExecuteReaderAsync(CommandBehavior.SingleRow, cancellationToken);
         if (await reader.ReadAsync(cancellationToken))
-            return MapListing(reader);
+            return MapValuation(reader);
         return null;
     }
 
@@ -247,6 +241,21 @@ public class ListingRepository : IListingRepository
                 CreatedAt = reader.GetDateTime("v_CreatedAt"),
                 UpdatedAt = reader.GetDateTime("v_UpdatedAt")
             }
+        };
+    }
+
+    private static ValuationResponseDto MapValuation(MySqlDataReader reader)
+    {
+        return new ValuationResponseDto
+        {
+            Id = Guid.Parse(reader.GetString("v_Id")),
+            PickupItemId = Guid.Parse(reader.GetString("v_PickupItemId")),
+            Price = reader.GetDecimal("v_Price"),
+            Condition = reader.GetString("v_Condition"),
+            CreatedAt = reader.GetDateTime("v_CreatedAt"),
+            UpdatedAt = reader.GetDateTime("v_UpdatedAt"),
+            ItemName = reader.GetString("ItemName"),
+            Quantity = reader.GetInt32(reader.GetOrdinal("Quantity"))
         };
     }
 }

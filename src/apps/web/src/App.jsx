@@ -20,6 +20,8 @@ import  MyPickupsView  from './views/MyPickupsView';
 import { AuditReportView } from './views/AuditReportView';
 import ValuationView from './views/ValuationView';
 import { RecyclerPickupBookingView } from './views/RecyclerPickupBookingView';
+import MarketplaceView from './views/MarketplaceView';
+import CreateListingView from './views/CreateListingView';
 
 const HomeRedirect = () => {
   const { isAuthenticated } = useAuth();
@@ -49,6 +51,8 @@ export const App = () => {
               <Route path="/kyc-admin" element={<ProtectedRoute rolesAllowed={['Admin']}><KycAdminView /></ProtectedRoute>} />
                   <Route path="/admin/users" element={<ProtectedRoute rolesAllowed={['Admin']}><AdminUsersView /></ProtectedRoute>} />
                   <Route path="/access-denied" element={<AccessDeniedView />} />
+                  <Route path="/marketplace" element={<MarketplaceView />} />
+                  <Route path="/create-listing" element={<ProtectedRoute rolesAllowed={['Recycler']}><CreateListingView /></ProtectedRoute>} />
                   <Route path="/" element={<HomeRedirect />} />
             </Routes>
           </main>

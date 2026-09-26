@@ -439,7 +439,7 @@ function ValuationView() {
                   </p>
                 )}
                 {filteredItems.map((item) => {
-                  const isValued = existingValuation && existingValuation.items.some(i => i.id === item.id);
+                  const isValued = valuationMap[item.id];
                   return (
                     <div
                       key={item.id}

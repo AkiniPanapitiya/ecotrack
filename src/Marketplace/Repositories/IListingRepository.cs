@@ -8,7 +8,7 @@ namespace EcoTrack.MarketplaceService.Repositories;
 public interface IListingRepository
 {
     Task<ListingResponseDto?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
-    Task<ListingResponseDto?> GetByValuationIdAsync(Guid valuationId, CancellationToken cancellationToken = default);
+    Task<ValuationResponseDto?> GetValuationByIdAsync(Guid valuationId, CancellationToken cancellationToken = default);
     Task<bool> CreateAsync(ListingResponseDto listing, CancellationToken cancellationToken = default);
     Task<bool> UpdateAsync(Guid id, UpdateListingRequestDto dto, CancellationToken cancellationToken = default);
     Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default);

@@ -19,6 +19,20 @@ public class ValuationController : ControllerBase
         _valuationService = valuationService;
     }
 
+    /// GET /api/valuations — Get all valuations for current recycler
+    [HttpGet]
+    [Authorize(Roles = "Recycler")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetAllValuations(CancellationToken cancellationToken = default)
+    {
+        var recyclerId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
+        if (string.IsNullOrEmpty(recyclerId))
+            return Unauthorized(new { message = "Invalid token." });
+
+        var valuations = await _valuationService.GetValuationsByRecyclerAsync(recyclerId, cancellationToken);
+        return Ok(valuations);
+    }
+
     /// POST /api/valuations — Create a valuation (Recycler only)
     [HttpPost]
     [Authorize(Roles = "Recycler")]
