@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { getUsers, changeUserRole, toggleUserActive } from '../services/kycApi';
-import { ChevronDown, Check, User, Truck, Shield, X, AlertTriangle, Users } from 'lucide-react';
+import { ChevronDown, Check, User, Truck, Shield, AlertTriangle, Users } from 'lucide-react';
 
 const ROLES = [
   { value: 'User', label: 'User', icon: User },
