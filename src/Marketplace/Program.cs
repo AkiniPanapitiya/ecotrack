@@ -1,11 +1,78 @@
+using System.Text;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using EcoTrack.MarketplaceService.Data;
+using EcoTrack.MarketplaceService.Repositories;
+using EcoTrack.MarketplaceService.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
+    });
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+// Configure CORS — allow frontend origins (Vite dev server)
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowFrontend", policy =>
+    {
+        policy.WithOrigins(
+                "http://localhost:3000",
+                "http://localhost:5173",
+                "http://127.0.0.1:5173",
+                "http://localhost:5174",
+                "http://127.0.0.1:5174")
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials();
+    });
+});
+
+// Configure JWT Authentication (same key as Identity service — tokens are shared)
+var jwtSecretKey = builder.Configuration["Jwt:SecretKey"]
+    ?? builder.Configuration["Jwt:Key"]
+    ?? "EcoTrack_Super_Secret_Key_For_Jwt_Auth_2026_SE3022_CaseStudy!";
+var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "EcoTrack.IdentityService";
+var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "EcoTrack.ClientApps";
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.RequireHttpsMetadata = false;
+    options.SaveToken = true;
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecretKey)),
+        ValidateIssuer = true,
+        ValidIssuer = jwtIssuer,
+        ValidateAudience = true,
+        ValidAudience = jwtAudience,
+        ValidateLifetime = true,
+        ClockSkew = TimeSpan.Zero
+    };
+});
+builder.Services.AddAuthorization();
+
+// Register DB connection factory — connection string from appsettings
+var connectionString = builder.Configuration.GetConnectionString("MarketplaceDb")
+    ?? "Server=localhost;Database=ecotrack_marketplace_db;Uid=root;Pwd=;";
+builder.Services.AddSingleton<IDbConnectionFactory>(new DbConnectionFactory(connectionString));
+
+// Register valuation services
+builder.Services.AddScoped<IValuationRepository, ValuationRepository>();
+builder.Services.AddScoped<IValuationService, ValuationService>();
 
 var app = builder.Build();
 
@@ -16,10 +83,16 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+// app.UseHttpsRedirection(); // Disabled — browser CORS preflight fails on HTTP redirect
+
+app.UseCors("AllowFrontend");
+
+// Auth middleware — must come before MapControllers
+app.UseAuthentication();
+app.UseAuthorization();
 
 // =============================================
-// Port: 5003 | Owner:sehenasi (IT24610783)
+// Port: 5003 | Owner: sehenasi (IT24610783)
 //======================================
 
 // GET /marketplace/health — service health check
@@ -74,5 +147,8 @@ app.MapGet("/marketplace/listings/{id}", (int id) =>
 })
 .WithName("GetListingById")
 .WithOpenApi();
+
+// Map controller routes
+app.MapControllers();
 
 app.Run();

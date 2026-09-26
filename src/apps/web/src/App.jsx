@@ -18,6 +18,8 @@ import { ResetPasswordView } from './views/ResetPasswordView';
 import { ScheduleManagementView } from './views/ScheduleManagementView';
 import  MyPickupsView  from './views/MyPickupsView';
 import { AuditReportView } from './views/AuditReportView';
+import ValuationView from './views/ValuationView';
+import { RecyclerPickupBookingView } from './views/RecyclerPickupBookingView';
 
 const HomeRedirect = () => {
   const { isAuthenticated } = useAuth();
@@ -41,6 +43,7 @@ export const App = () => {
               <Route path="/reset-password" element={<ResetPasswordView />} />
               <Route path="/schedule" element={<ProtectedRoute rolesAllowed={['Recycler']}><ScheduleManagementView /></ProtectedRoute>} />
               <Route path="/my-pickups" element={<ProtectedRoute><MyPickupsView /></ProtectedRoute>} />
+              <Route path="/valuations" element={<ProtectedRoute rolesAllowed={['Recycler']}><ValuationView /></ProtectedRoute>} />
               <Route path="/audit-report" element={<ProtectedRoute><AuditReportView /></ProtectedRoute>} />
               <Route path="/kyc" element={<ProtectedRoute rolesAllowed={['Recycler']}><KycView /></ProtectedRoute>} />
               <Route path="/kyc-admin" element={<ProtectedRoute rolesAllowed={['Admin']}><KycAdminView /></ProtectedRoute>} />

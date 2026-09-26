@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { logisticsApi } from '../services/api';
-import { Calendar, Clock, AlertCircle, CheckCircle, Truck, MapPin, Phone, Scale, MessageSquare, PackageCheck } from 'lucide-react';
+import { Calendar, Clock, AlertCircle, CheckCircle, Truck, MapPin, Phone, Scale, MessageSquare, PackageCheck, Edit3 } from 'lucide-react';
 
 const TIME_SLOTS = [
   'Morning (09:00 - 12:00)',
@@ -272,6 +273,10 @@ export const ScheduleManagementView = () => {
               <button className="btn btn-primary" onClick={() => handleMarkCollected(pickup.id)}>
                 <PackageCheck size={16} /> Mark as Collected
               </button>
+              <Link to="/valuations" className="btn btn-secondary"
+                style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                <Edit3 size={14} /> Value Items
+              </Link>
             </div>
           ))}
         </div>
