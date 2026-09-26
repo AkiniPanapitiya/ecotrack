@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Leaf, User, Shield, LogOut, FileText, LayoutDashboard, Building2, Truck, PackageSearch, Users, Tag } from 'lucide-react';
+import { Leaf, User, Shield, LogOut, FileText, LayoutDashboard, Building2, Truck, PackageSearch, Users, Tag, Plus } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export const Navbar = () => {
@@ -28,34 +28,41 @@ export const Navbar = () => {
             </Link>
 
           {user?.role === 'User' && (
-            <Link to="/pickup" className="nav-link" style={{ display: 'flex', alignItems: 'center', gap: '5px', whiteSpace: 'nowrap' }}>
-              <Truck size={15} />
-              <span>Book Pickup</span>
-            </Link>
-          )}
-
-          {user?.role === 'User' && (
-          <Link to="/my-pickups" className="nav-link" style={{ display: 'flex', alignItems: 'center', gap: '5px', whiteSpace: 'nowrap' }}>
-              <PackageSearch size={15} />
-              <span>My Pickups</span>
-          </Link>
+            <>
+              <Link to="/pickup" className="nav-link" style={{ display: 'flex', alignItems: 'center', gap: '5px', whiteSpace: 'nowrap' }}>
+                <Truck size={15} />
+                <span>Book Pickup</span>
+              </Link>
+              <Link to="/my-pickups" className="nav-link" style={{ display: 'flex', alignItems: 'center', gap: '5px', whiteSpace: 'nowrap' }}>
+                <PackageSearch size={15} />
+                <span>My Pickups</span>
+              </Link>
+              <Link to="/marketplace" className="nav-link" style={{ display: 'flex', alignItems: 'center', gap: '5px', whiteSpace: 'nowrap' }}>
+                <Tag size={15} />
+                <span>Marketplace</span>
+              </Link>
+            </>
           )}
 
           {user?.role === 'Recycler' && (
-            <>
-              <Link to="/schedule" className="nav-link" style={{ display: 'flex', alignItems: 'center', gap: '5px', whiteSpace: 'nowrap' }}>
-                <Shield size={15} />
-                <span className="nav-text">Schedule Management</span>
-              </Link>
-              <Link to="/kyc" className="nav-link" style={{ display: 'flex', alignItems: 'center', gap: '5px', whiteSpace: 'nowrap' }}>
-                <Shield size={15} />
-                <span className="nav-text">KYC Verification</span>
-              </Link>
-              <Link to="/valuations" className="nav-link" style={{ display: 'flex', alignItems: 'center', gap: '5px', whiteSpace: 'nowrap' }}>
-                <PackageSearch size={15} />
-                <span className="nav-text">Item Valuations</span>
-              </Link>
-            </>
+          <>
+            <Link to="/schedule" className="nav-link" style={{ display: 'flex', alignItems: 'center', gap: '5px', whiteSpace: 'nowrap' }}>
+              <Shield size={15} />
+              <span className="nav-text">Schedule Management</span>
+            </Link>
+            <Link to="/kyc" className="nav-link" style={{ display: 'flex', alignItems: 'center', gap: '5px', whiteSpace: 'nowrap' }}>
+              <Shield size={15} />
+              <span className="nav-text">KYC Verification</span>
+            </Link>
+            <Link to="/valuations" className="nav-link" style={{ display: 'flex', alignItems: 'center', gap: '5px', whiteSpace: 'nowrap' }}>
+              <PackageSearch size={15} />
+              <span className="nav-text">Item Valuations</span>
+            </Link>
+            <Link to="/create-listing" className="nav-link" style={{ display: 'flex', alignItems: 'center', gap: '5px', whiteSpace: 'nowrap' }}>
+              <Plus size={15} />
+              <span className="nav-text">Create Listing</span>
+            </Link>
+          </>
           )}
 
             {user?.role === 'Admin' && (

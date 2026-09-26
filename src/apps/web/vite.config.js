@@ -7,24 +7,17 @@ export default defineConfig({
     port: 5173,
     host: true,
     proxy: {
-      '/api/identity': {
-        target: 'http://localhost:5001',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/identity/, '/api'),
-      },
-      '/api/marketplace': {
-        target: 'http://localhost:5003',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/marketplace/, '/marketplace'),
-      },
-      '/marketplace': {
+      '/api/listings': {
         target: 'http://localhost:5003',
         changeOrigin: true,
       },
-      '/api/analytics': {
-        target: 'http://localhost:5004',
+      '/api/valuations': {
+        target: 'http://localhost:5003',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/analytics/, '/analytics'),
+      },
+      '/uploads': {
+        target: 'http://localhost:5003',
+        changeOrigin: true,
       },
       '/api': {
         target: 'http://localhost:5002',

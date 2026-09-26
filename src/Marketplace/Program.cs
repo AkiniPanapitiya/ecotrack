@@ -70,9 +70,11 @@ var connectionString = builder.Configuration.GetConnectionString("MarketplaceDb"
     ?? "Server=localhost;Database=ecotrack_marketplace_db;Uid=root;Pwd=;";
 builder.Services.AddSingleton<IDbConnectionFactory>(new DbConnectionFactory(connectionString));
 
-// Register valuation services
+// Register valuation + listing services
 builder.Services.AddScoped<IValuationRepository, ValuationRepository>();
 builder.Services.AddScoped<IValuationService, ValuationService>();
+builder.Services.AddScoped<IListingRepository, ListingRepository>();
+builder.Services.AddScoped<IListingService, ListingService>();
 
 var app = builder.Build();
 
@@ -87,7 +89,14 @@ if (app.Environment.IsDevelopment())
 
 app.UseCors("AllowFrontend");
 
-// Auth middleware — must come before MapControllers
+var uploadsDir = Path.Combine(AppContext.BaseDirectory, "uploads");
+Directory.CreateDirectory(uploadsDir);
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(uploadsDir),
+    RequestPath = "/uploads"
+});
+
 app.UseAuthentication();
 app.UseAuthorization();
 

@@ -95,4 +95,10 @@ public class ValuationService : IValuationService
             return (false, 404, "No valuation found for this item.", null);
         return (true, 200, "Valuation retrieved.", valuation);
     }
+
+    public async Task<List<ValuationResponseDto>> GetValuationsByRecyclerAsync(
+        string recyclerId, CancellationToken cancellationToken = default)
+    {
+        return await _valuationRepository.GetByRecyclerIdAsync(recyclerId, cancellationToken);
+    }
 }

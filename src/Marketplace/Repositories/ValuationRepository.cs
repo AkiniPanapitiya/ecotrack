@@ -79,6 +79,14 @@ public class ValuationRepository : IValuationRepository
 
     private static ValuationResponseDto MapValuation(MySqlDataReader reader)
     {
+        var hasItemName = false;
+        var hasQuantity = false;
+        for (var i = 0; i < reader.FieldCount; i++)
+        {
+            if (reader.GetName(i).Equals("ItemName", StringComparison.OrdinalIgnoreCase)) hasItemName = true;
+            if (reader.GetName(i).Equals("Quantity", StringComparison.OrdinalIgnoreCase)) hasQuantity = true;
+        }
+
         return new ValuationResponseDto
         {
             Id = Guid.Parse(reader.GetString("Id")),
@@ -87,7 +95,28 @@ public class ValuationRepository : IValuationRepository
             Price = reader.GetDecimal("Price"),
             Condition = reader.GetString("Condition"),
             CreatedAt = reader.GetDateTime("CreatedAt"),
-            UpdatedAt = reader.GetDateTime("UpdatedAt")
+            UpdatedAt = reader.GetDateTime("UpdatedAt"),
+            ItemName = hasItemName && !reader.IsDBNull(reader.GetOrdinal("ItemName")) ? reader.GetString("ItemName") : string.Empty,
+            Quantity = hasQuantity && !reader.IsDBNull(reader.GetOrdinal("Quantity")) ? reader.GetInt32(reader.GetOrdinal("Quantity")) : 0
         };
+    }
+
+    public async Task<List<ValuationResponseDto>> GetByRecyclerIdAsync(string recyclerId, CancellationToken cancellationToken = default)
+    {
+        await using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
+        const string sql = @"
+            SELECT v.Id, v.PickupItemId, v.RecyclerId, v.Price, v.`Condition`, v.CreatedAt, v.UpdatedAt,
+                   pi.ItemName, pi.Quantity
+            FROM ItemValuations v
+            LEFT JOIN ecotrack_logistics_db.PickupItems pi ON pi.Id = v.PickupItemId
+            WHERE v.RecyclerId = @RecyclerId
+            ORDER BY v.CreatedAt DESC;";
+        await using var command = new MySqlCommand(sql, connection);
+        command.Parameters.AddWithValue("@RecyclerId", recyclerId);
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        var results = new List<ValuationResponseDto>();
+        while (await reader.ReadAsync(cancellationToken))
+            results.Add(MapValuation(reader));
+        return results;
     }
 }
