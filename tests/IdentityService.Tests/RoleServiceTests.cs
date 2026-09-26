@@ -27,9 +27,9 @@ public class RoleServiceTests
     public async Task GetAllUsersAsync_EmptyDatabase_ReturnsEmptyList()
     {
         _userRepositoryMock.Setup(r => r.GetAllUsersAsync(null, null, null, false, _ct))
-            .ReturnsAsync(Array.Empty<UserListDto>());
+            .ReturnsAsync(new List<UserListDto>());
 
-        var (success, statusCode, message, users) = await _service.GetAllUsersAsync(_ct);
+        var (success, statusCode, message, users) = await _service.GetAllUsersAsync(cancellationToken: _ct);
 
         Assert.True(success);
         Assert.Equal(200, statusCode);
@@ -50,7 +50,7 @@ public class RoleServiceTests
         _userRepositoryMock.Setup(r => r.GetAllUsersAsync(null, null, null, false, _ct))
             .ReturnsAsync(users);
 
-        var (success, statusCode, message, result) = await _service.GetAllUsersAsync(_ct);
+        var (success, statusCode, message, result) = await _service.GetAllUsersAsync(cancellationToken: _ct);
 
         Assert.True(success);
         Assert.Equal(200, statusCode);
@@ -68,7 +68,7 @@ public class RoleServiceTests
         _userRepositoryMock.Setup(r => r.GetAllUsersAsync("Recycler", null, null, false, _ct))
             .ReturnsAsync(users);
 
-        var (success, statusCode, message, result) = await _service.GetAllUsersAsync(roleFilter: "Recycler", _ct);
+        var (success, statusCode, message, result) = await _service.GetAllUsersAsync(roleFilter: "Recycler", cancellationToken: _ct);
 
         Assert.True(success);
         Assert.Single(result!);
@@ -86,7 +86,7 @@ public class RoleServiceTests
         _userRepositoryMock.Setup(r => r.GetAllUsersAsync(null, false, null, false, _ct))
             .ReturnsAsync(users);
 
-        var (success, statusCode, message, result) = await _service.GetAllUsersAsync(statusFilter: false, _ct);
+        var (success, statusCode, message, result) = await _service.GetAllUsersAsync(statusFilter: false, cancellationToken: _ct);
 
         Assert.True(success);
         Assert.Single(result!);
@@ -105,7 +105,7 @@ public class RoleServiceTests
         _userRepositoryMock.Setup(r => r.GetAllUsersAsync(null, null, "CreatedAt", true, _ct))
             .ReturnsAsync(users);
 
-        var (success, statusCode, message, result) = await _service.GetAllUsersAsync(sortField: "CreatedAt", sortDesc: true, _ct);
+        var (success, statusCode, message, result) = await _service.GetAllUsersAsync(sortField: "CreatedAt", sortDesc: true, cancellationToken: _ct);
 
         Assert.True(success);
         Assert.Equal(2, result!.Count);
@@ -122,11 +122,11 @@ public class RoleServiceTests
         var adminUser = new User { Id = adminId, Email = "admin@test.com", Role = "Admin" };
 
         _userRepositoryMock.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((Guid id) => id == userId ? user : id == adminId ? adminUser : null);
+            .ReturnsAsync((Guid id, CancellationToken token) => id == userId ? user : id == adminId ? adminUser : null);
         _userRepositoryMock.Setup(r => r.UpdateRoleAsync(It.IsAny<Guid>(), It.IsAny<string>(), _ct))
             .ReturnsAsync(true);
         _auditRepositoryMock.Setup(r => r.LogActivityAsync(It.IsAny<UserAuditLog>(), _ct))
-            .Returns(Task.CompletedTask);
+            .ReturnsAsync(true);
 
         var dto = new ChangeRoleRequestDto { NewRole = "Recycler" };
         var (success, statusCode, message, response) = await _service.ChangeUserRoleAsync(userId, adminId.ToString(), dto, _ct);
@@ -149,7 +149,7 @@ public class RoleServiceTests
         var adminUser = new User { Id = adminId, Email = "admin@test.com", Role = "Admin" };
 
         _userRepositoryMock.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((Guid id) => id == userId ? user : id == adminId ? adminUser : null);
+            .ReturnsAsync((Guid id, CancellationToken token) => id == userId ? user : id == adminId ? adminUser : null);
 
         var dto = new ChangeRoleRequestDto { NewRole = "SuperAdmin" };
         var (success, statusCode, message, response) = await _service.ChangeUserRoleAsync(userId, adminId.ToString(), dto, _ct);
@@ -168,7 +168,7 @@ public class RoleServiceTests
         var adminUser = new User { Id = adminId, Email = "admin@test.com", Role = "Admin" };
 
         _userRepositoryMock.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((Guid id) => id == adminId ? adminUser : null);
+            .ReturnsAsync((Guid id, CancellationToken token) => id == adminId ? adminUser : null);
 
         var dto = new ChangeRoleRequestDto { NewRole = "Recycler" };
         var (success, statusCode, message, response) = await _service.ChangeUserRoleAsync(userId, adminId.ToString(), dto, _ct);
@@ -187,7 +187,7 @@ public class RoleServiceTests
         var adminUser = new User { Id = adminId, Email = "admin@test.com", Role = "Admin" };
 
         _userRepositoryMock.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((Guid id) => id == userId ? user : id == adminId ? adminUser : null);
+            .ReturnsAsync((Guid id, CancellationToken token) => id == userId ? user : id == adminId ? adminUser : null);
 
         var dto = new ChangeRoleRequestDto { NewRole = "Recycler" };
         var (success, statusCode, message, response) = await _service.ChangeUserRoleAsync(userId, adminId.ToString(), dto, _ct);
@@ -230,11 +230,11 @@ public class RoleServiceTests
         var adminUser = new User { Id = adminId, Email = "admin@test.com", Role = "Admin" };
 
         _userRepositoryMock.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((Guid id) => id == userId ? user : id == adminId ? adminUser : null);
+            .ReturnsAsync((Guid id, CancellationToken token) => id == userId ? user : id == adminId ? adminUser : null);
         _userRepositoryMock.Setup(r => r.UpdateRoleAsync(userId, It.IsAny<string>(), _ct))
             .ReturnsAsync(true);
         _auditRepositoryMock.Setup(r => r.LogActivityAsync(It.IsAny<UserAuditLog>(), _ct))
-            .Returns(Task.CompletedTask);
+            .ReturnsAsync(true);
 
         var dto = new ChangeRoleRequestDto { NewRole = role };
         var (success, statusCode, message, response) = await _service.ChangeUserRoleAsync(userId, adminId.ToString(), dto, _ct);
@@ -283,7 +283,7 @@ public class RoleServiceTests
 
         _userRepositoryMock.Setup(r => r.GetByIdAsync(userId, _ct)).ReturnsAsync(user);
         _userRepositoryMock.Setup(r => r.UpdateActiveStatusAsync(userId, false, _ct)).ReturnsAsync(true);
-        _auditRepositoryMock.Setup(r => r.LogActivityAsync(It.IsAny<UserAuditLog>(), _ct)).Returns(Task.CompletedTask);
+        _auditRepositoryMock.Setup(r => r.LogActivityAsync(It.IsAny<UserAuditLog>(), _ct)).ReturnsAsync(true);
 
         var result = await _service.UpdateActiveStatusAsync(userId, false, _ct);
 
@@ -313,7 +313,7 @@ public class RoleServiceTests
         var adminId = Guid.NewGuid();
         var details = "Test audit log";
 
-        _auditRepositoryMock.Setup(r => r.LogActivityAsync(It.IsAny<UserAuditLog>(), _ct)).Returns(Task.CompletedTask);
+        _auditRepositoryMock.Setup(r => r.LogActivityAsync(It.IsAny<UserAuditLog>(), _ct)).ReturnsAsync(true);
 
         await _service.LogAuditAsync(adminId.ToString(), details);
 

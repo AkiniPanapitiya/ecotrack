@@ -1,0 +1,55 @@
+# =============================================================================
+# EcoTrack Prometheus Configuration
+# Scrapes health checks, HTTP metrics, and service telemetry across 4 services
+# =============================================================================
+
+global:
+  scrape_interval: 10s
+  evaluation_interval: 10s
+  scrape_timeout: 5s
+
+scrape_configs:
+  # Prometheus Self-Monitoring
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # Identity Service (Port 5001)
+  - job_name: "ecotrack-identity"
+    metrics_path: "/identity/health"
+    scrape_interval: 5s
+    static_configs:
+      - targets: ["identity:5001"]
+        labels:
+          service: "Identity"
+          environment: "Development"
+
+  # Logistics Service (Port 5002)
+  - job_name: "ecotrack-logistics"
+    metrics_path: "/logistics/health"
+    scrape_interval: 5s
+    static_configs:
+      - targets: ["logistics:5002"]
+        labels:
+          service: "Logistics"
+          environment: "Development"
+
+  # Marketplace Service (Port 5003)
+  - job_name: "ecotrack-marketplace"
+    metrics_path: "/marketplace/health"
+    scrape_interval: 5s
+    static_configs:
+      - targets: ["marketplace:5003"]
+        labels:
+          service: "Marketplace"
+          environment: "Development"
+
+  # Analytics Service (Port 5004)
+  - job_name: "ecotrack-analytics"
+    metrics_path: "/analytics/health"
+    scrape_interval: 5s
+    static_configs:
+      - targets: ["analytics:5004"]
+        labels:
+          service: "Analytics"
+          environment: "Development"
