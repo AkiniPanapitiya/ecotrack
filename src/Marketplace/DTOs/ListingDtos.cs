@@ -46,6 +46,7 @@ public class ListingResponseDto
     public decimal Price { get; set; }
     public string? PhotoPath { get; set; }
     public string Status { get; set; } = "Available";
+    public bool IsDeleted { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 
