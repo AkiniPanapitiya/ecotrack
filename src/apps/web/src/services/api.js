@@ -28,8 +28,18 @@ const attachAuthToken = (client) => {
   });
 };
 
+const MARKETPLACE_API_URL = import.meta.env.VITE_MARKETPLACE_API_URL || 'http://localhost:5003/marketplace';
+
+const marketplaceClient = axios.create({
+  baseURL: MARKETPLACE_API_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
 attachAuthToken(api);
 attachAuthToken(logisticsClient);
+attachAuthToken(marketplaceClient);
 
 // ECO-12 / ECO-13: Auth Service Endpoints
 export const authApi = {

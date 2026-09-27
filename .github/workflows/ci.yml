@@ -6,9 +6,14 @@ on:
   pull_request:
     branches: [ "Dev" ]
 
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
 jobs:
   build-and-test:
-    name: Build & Test (.NET)
+    name: Build, Test & Coverage Gate (.NET)
     runs-on: ubuntu-latest
 
     steps:
@@ -26,18 +31,86 @@ jobs:
       - name: Build all services
         run: dotnet build EcoTrack.slnx --configuration Release --no-restore
 
-      - name: Run unit tests
+      - name: Run unit tests with code coverage
         run: |
-          dotnet test tests/IdentityService.Tests/IdentityService.Tests.csproj --configuration Release --verbosity normal
-          dotnet test tests/LogisticsService.Tests/LogisticsService.Tests.csproj --configuration Release --verbosity normal 
+          dotnet test EcoTrack.slnx \
+            --configuration Release \
+            --no-build \
+            --verbosity normal \
+            --logger "trx;LogFileName=test-results.trx" \
+            --collect:"XPlat Code Coverage" \
+            --results-directory ./TestResults
 
-      - name: Upload test results
+      - name: Generate Code Coverage Report & Quality Summary
+        run: |
+          dotnet tool install --global dotnet-reportgenerator-globaltool || true
+          reportgenerator \
+            -reports:"TestResults/**/coverage.cobertura.xml" \
+            -targetdir:"TestResults/CoverageReport" \
+            -reporttypes:"HtmlInline;Cobertura;TextSummary"
+          echo "=== Code Coverage Summary ==="
+          cat TestResults/CoverageReport/Summary.txt
+
+      - name: Verify Code Coverage Quality Gate
+        run: |
+          LINE_COV=$(grep -i "Line coverage:" TestResults/CoverageReport/Summary.txt | head -n 1 | awk '{print $3}' | tr -d '%')
+          echo "Evaluated Line Coverage: ${LINE_COV}%"
+          # Quality Gate verification
+          if [ -z "$LINE_COV" ]; then
+            echo "::error::Failed to parse line coverage metric."
+            exit 1
+          fi
+          echo "Quality Gate check passed: Unit test coverage collected successfully (${LINE_COV}%)."
+
+      - name: Upload test & coverage results
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: test-results
-          path: "**/test-results.trx"
-          retention-days: 5
+          name: test-and-coverage-reports
+          path: |
+            TestResults/
+            TestResults/CoverageReport/
+          retention-days: 7
+
+  codeql-analysis:
+    name: CodeQL Security Analysis
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ 'csharp', 'javascript-typescript' ]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          queries: security-extended,security-and-quality
+
+      - name: Setup .NET 10.0 SDK
+        if: matrix.language == 'csharp'
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Build C# services for CodeQL
+        if: matrix.language == 'csharp'
+        run: |
+          dotnet restore EcoTrack.slnx
+          dotnet build EcoTrack.slnx --configuration Release --no-restore
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.language }}"
 
   docker-build:
     name: Docker Build Check

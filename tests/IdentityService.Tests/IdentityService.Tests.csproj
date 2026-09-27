@@ -16,11 +16,17 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
+    <PackageReference Include="coverlet.collector" Version="6.0.4">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Identity\IdentityService.csproj" />
+    <ProjectReference Include="..\..\src\Logistics\LogisticsService.csproj" />
+    <ProjectReference Include="..\..\src\Marketplace\MarketplaceService.csproj" />
   </ItemGroup>
 
 </Project>

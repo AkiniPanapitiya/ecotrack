@@ -71,12 +71,13 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_HTTP_PORTS=5003
-      - ConnectionStrings__DefaultConnection=Server=ecotrack-db;Database=ecotrack_marketplace;Uid=root;Pwd=root123;
+      - ConnectionStrings__DefaultConnection=Server=ecotrack-db;Database=ecotrack_marketplace_db;Uid=root;Pwd=root123;
       - Kafka__BootstrapServers=kafka:9092
     networks:
       - ecotrack-network
     depends_on:
       - kafka
+      - db
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5003/marketplace/health"]
       interval: 10s
@@ -98,12 +99,13 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_HTTP_PORTS=5004
-      - ConnectionStrings__DefaultConnection=Server=ecotrack-db;Database=ecotrack_analytics;Uid=root;Pwd=root123;
+      - ConnectionStrings__DefaultConnection=Server=ecotrack-db;Database=ecotrack_analytics_db;Uid=root;Pwd=root123;
       - Kafka__BootstrapServers=kafka:9092
     networks:
       - ecotrack-network
     depends_on:
       - kafka
+      - db
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5004/analytics/health"]
       interval: 10s
@@ -141,6 +143,20 @@ services:
       retries: 5
       start_period: 30s
 
+  # Kafka Topic Provisioner (Sprint 3 Topics & DLQs)
+  kafka-init:
+    image: apache/kafka:3.8.0
+    container_name: ecotrack-kafka-init
+    depends_on:
+      kafka:
+        condition: service_healthy
+    networks:
+      - ecotrack-network
+    volumes:
+      - ./scripts/init-kafka-topics.sh:/init-kafka-topics.sh
+    entrypoint: ["/bin/bash", "/init-kafka-topics.sh"]
+    restart: "no"
+
   # MySQL Database
   db:
     image: mysql:8.0
@@ -161,6 +177,47 @@ services:
       retries: 5
       start_period: 30s
 
+  # Prometheus Monitoring Server (Port 9090)
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    container_name: ecotrack-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+      - "--web.console.templates=/usr/share/prometheus/consoles"
+      - "--web.enable-lifecycle"
+    networks:
+      - ecotrack-network
+    restart: unless-stopped
+
+  # Grafana Dashboard (Port 3000)
+  grafana:
+    image: grafana/grafana:11.2.0
+    container_name: ecotrack-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/var/lib/grafana/dashboards/ecotrack-overview.json
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./monitoring/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    networks:
+      - ecotrack-network
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
 # Networks
 networks:
   ecotrack-network:
@@ -172,3 +229,8 @@ volumes:
     driver: local
   db-data:
     driver: local
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
+
