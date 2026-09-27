@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { valuationApi } from '../services/valuationApi';
 import { logisticsApi } from '../services/api';
-import { PackageSearch, Edit3, CheckCircle2, XCircle, Loader2, Tag, AlertCircle, Loader } from 'lucide-react';
+import { PackageSearch, Edit3, CheckCircle2, XCircle, Loader2, Tag, AlertCircle, Loader, Copy, Check, Recycle } from 'lucide-react';
+import { copyTextToClipboard } from '../utils/clipboard';
 
 const CONDITIONS = ['Good', 'Fair', 'Poor'];
 
@@ -23,6 +25,16 @@ function ValuationView() {
   const [filterStatus, setFilterStatus] = useState('All');
   // Per-item valuation map: itemId -> { price, condition } or null
   const [valuationMap, setValuationMap] = useState({});
+  const [copiedId, setCopiedId] = useState(null);
+
+  const handleCopyId = async (e, id) => {
+    e.stopPropagation();
+    const ok = await copyTextToClipboard(id);
+    if (ok) {
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 2000);
+    }
+  };
 
   // Reload when user changes (login/logout)
   useEffect(() => {
@@ -465,8 +477,49 @@ function ValuationView() {
                         <div style={{ fontWeight: 600, fontSize: '0.9rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {item.itemName}
                         </div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                          ID: {item.id}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                          <span>ID: {item.id}</span>
+                          <button
+                            type="button"
+                            onClick={(e) => handleCopyId(e, item.id)}
+                            style={{
+                              background: 'rgba(255,255,255,0.06)',
+                              border: '1px solid var(--border-color)',
+                              borderRadius: '4px',
+                              color: copiedId === item.id ? 'var(--primary)' : 'var(--text-secondary)',
+                              cursor: 'pointer',
+                              padding: '1px 5px',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '3px',
+                              fontSize: '0.7rem',
+                            }}
+                            title="Copy item ID"
+                          >
+                            {copiedId === item.id ? <Check size={11} /> : <Copy size={11} />}
+                            {copiedId === item.id ? 'Copied!' : 'Copy'}
+                          </button>
+                          <Link
+                            to={`/disposal-certification?itemId=${item.id}`}
+                            onClick={(e) => e.stopPropagation()}
+                            style={{
+                              background: 'rgba(16, 185, 129, 0.12)',
+                              border: '1px solid rgba(16, 185, 129, 0.3)',
+                              borderRadius: '4px',
+                              color: 'var(--primary)',
+                              cursor: 'pointer',
+                              padding: '1px 6px',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '3px',
+                              fontSize: '0.7rem',
+                              textDecoration: 'none',
+                            }}
+                            title="Certify Disposal for this item"
+                          >
+                            <Recycle size={11} />
+                            Certify
+                          </Link>
                         </div>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
