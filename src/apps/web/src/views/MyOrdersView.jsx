@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Package, DollarSign, Clock, CheckCircle2, AlertCircle, Loader2, X as XIcon, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Package, Clock, CheckCircle2, AlertCircle, X as XIcon, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const PAGE_SIZE = 10;
 
@@ -101,8 +101,9 @@ function MyOrdersView() {
 
   if (loading && orders.length === 0) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
-        <Loader2 size={36} className="spin" style={{ color: 'var(--primary)' }} />
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '50vh', gap: '0.75rem' }}>
+        <Package size={36} style={{ color: 'var(--primary)', opacity: 0.8 }} />
+        <span style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>Loading orders...</span>
       </div>
     );
   }
@@ -163,7 +164,6 @@ function MyOrdersView() {
                       {getStatusBadge(order.status)}
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.5rem' }}>
-                      <DollarSign size={14} style={{ color: 'var(--accent)' }} />
                       <span style={{ fontWeight: 700, color: 'var(--accent)', fontSize: '0.95rem' }}>
                         {formatPrice(order.priceAtPurchase)}
                       </span>
