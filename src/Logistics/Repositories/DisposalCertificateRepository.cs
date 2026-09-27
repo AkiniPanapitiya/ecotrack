@@ -117,9 +117,11 @@ public class DisposalCertificateRepository : IDisposalCertificateRepository
         const string sql = @"
             SELECT dc.Id, dc.PickupItemId, dc.RecyclerId, dc.RecyclerName,
                    dc.DisposalMethod, dc.DisposedAt, dc.CreatedAt,
-                   pi.ItemName, pi.Quantity, pi.ItemCondition
+                   pi.ItemName, pi.Quantity, pi.ItemCondition,
+                   pr.UserId
             FROM DisposalCertificates dc
             INNER JOIN PickupItems pi ON pi.Id = dc.PickupItemId
+            INNER JOIN PickupRequests pr ON pr.Id = pi.PickupRequestId
             WHERE dc.PickupItemId = @PickupItemId;";
 
         await using var command = new MySqlCommand(sql, connection);

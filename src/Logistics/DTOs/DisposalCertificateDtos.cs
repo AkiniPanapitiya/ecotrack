@@ -26,6 +26,7 @@ public class DisposalCertificateDto
     public string ItemName { get; set; } = string.Empty;
     public int Quantity { get; set; }
     public string ItemCondition { get; set; } = string.Empty;
+    public Guid UserId { get; set; }
 }
 
 public class ItemWithCertificationDto

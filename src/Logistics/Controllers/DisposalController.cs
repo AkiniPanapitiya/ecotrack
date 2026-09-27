@@ -35,7 +35,14 @@ public class DisposalController : ControllerBase
             return BadRequest(ModelState);
         }
 
-        var recyclerId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        // Use FindFirstValue with fallback to "sub" (same pattern as Marketplace controllers)
+        var recyclerIdString = User.FindFirstValue(ClaimTypes.NameIdentifier)
+                                ?? User.FindFirstValue("sub");
+        if (string.IsNullOrEmpty(recyclerIdString))
+        {
+            return Unauthorized(new { message = "User ID not found in token." });
+        }
+        var recyclerId = Guid.Parse(recyclerIdString);
         var recyclerName = User.FindFirst("FullName")?.Value
                             ?? User.FindFirst(ClaimTypes.Name)?.Value
                             ?? "Recycler";
@@ -59,7 +66,9 @@ public class DisposalController : ControllerBase
         Guid pickupItemId,
         CancellationToken cancellationToken)
     {
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        // Use FindFirstValue with fallback to "sub" (same pattern as Marketplace controllers)
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier)
+                           ?? User.FindFirstValue("sub");
         var requestingUserId = Guid.TryParse(userIdClaim, out var parsed) ? parsed : Guid.Empty;
 
         var (success, statusCode, message, item) = await _certService.GetItemWithCertificateAsync(

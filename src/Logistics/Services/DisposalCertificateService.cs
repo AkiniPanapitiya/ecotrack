@@ -1,3 +1,4 @@
+using EcoTrack.LogisticsService.Data;
 using EcoTrack.LogisticsService.DTOs;
 using EcoTrack.LogisticsService.Models;
 using EcoTrack.LogisticsService.Repositories;
@@ -8,13 +9,16 @@ public class DisposalCertificateService : IDisposalCertificateService
 {
     private readonly IDisposalCertificateRepository _certRepository;
     private readonly IPickupRepository _pickupRepository;
+    private readonly IDbConnectionFactory _connectionFactory;
 
     public DisposalCertificateService(
         IDisposalCertificateRepository certRepository,
-        IPickupRepository pickupRepository)
+        IPickupRepository pickupRepository,
+        IDbConnectionFactory connectionFactory)
     {
         _certRepository = certRepository;
         _pickupRepository = pickupRepository;
+        _connectionFactory = connectionFactory;
     }
 
     public async Task<(bool Success, int StatusCode, string Message, DisposalCertificateDto? Certificate)> CreateCertificateAsync(
@@ -34,6 +38,17 @@ public class DisposalCertificateService : IDisposalCertificateService
         if (item == null)
         {
             return (false, 404, "Pickup item not found or not assigned to you.", null);
+        }
+
+        // Check if item is already disposed via direct DB query
+        await using var connection = (MySqlConnector.MySqlConnection)await _connectionFactory.CreateConnectionAsync(cancellationToken);
+        await using var cmd = new MySqlConnector.MySqlCommand(
+            "SELECT Status FROM PickupItems WHERE Id = @Id", connection);
+        cmd.Parameters.AddWithValue("@Id", pickupItemId.ToString());
+        var status = await cmd.ExecuteScalarAsync(cancellationToken);
+        if (status?.ToString() == "Disposed")
+        {
+            return (false, 409, "This item has already been certified as disposed.", null);
         }
 
         var result = await _certRepository.CreateCertificateAsync(
@@ -57,9 +72,8 @@ public class DisposalCertificateService : IDisposalCertificateService
             return (false, 404, "No disposal certificate found for this item.", null);
         }
 
-        // Find the pickup request that contains this item
-        var userPickups = await _pickupRepository.GetByUserIdAsync(requestingUserId, cancellationToken);
-        var isOwner = userPickups.Any(p => p.Items.Any(i => i.Id == pickupItemId));
+        // The cert includes UserId (owner) from the JOIN with PickupRequests
+        var isOwner = cert.UserId == requestingUserId;
         var isRecycler = cert.RecyclerId == requestingUserId;
 
         if (!isOwner && !isRecycler)
