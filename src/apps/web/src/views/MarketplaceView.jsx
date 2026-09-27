@@ -61,7 +61,7 @@ function MarketplaceView() {
     setPlacingOrder(true);
     try {
       const token = authToken || localStorage.getItem('ecotrack_token');
-      await fetch('/api/orders', {
+      const res = await fetch('/api/orders', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -69,6 +69,10 @@ function MarketplaceView() {
         },
         body: JSON.stringify({ listingId: selectedListing.id }),
       });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.message || 'Failed to place order.');
+      }
       setShowOrderModal(false);
       setSelectedListing(prev => ({ ...prev, status: 'Reserved' }));
       // Show a brief success toast-like message
@@ -334,7 +338,7 @@ function MarketplaceView() {
             }}
             onClick={() => handleSearch('')}
           >
-            <X size={14} />
+            <XIcon size={14} />
           </button>
         )}
       </div>

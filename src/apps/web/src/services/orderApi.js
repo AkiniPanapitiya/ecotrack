@@ -19,7 +19,7 @@ class OrderApiService {
   }
 
   async placeOrder(listingId, token) {
-    return this._request('/', {
+    return this._request('', {
       method: 'POST',
       body: JSON.stringify({ listingId }),
       auth: true,

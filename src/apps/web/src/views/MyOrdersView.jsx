@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Package, DollarSign, Clock, CheckCircle2, AlertCircle, Loader2, X as XIcon } from 'lucide-react';
+import { Package, DollarSign, Clock, CheckCircle2, AlertCircle, Loader2, X as XIcon, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const PAGE_SIZE = 10;
 
@@ -26,10 +26,15 @@ function MyOrdersView() {
       const res = await fetch(`/api/orders?page=${page}&pageSize=${pageSize}`, {
         headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
       });
-      if (!res.ok) throw new Error('Failed to load orders');
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to load orders');
+      }
       const data = await res.json();
-      setOrders(data.orders?.orders || []);
-      setTotalCount(data.orders?.totalCount || 0);
+      const orderList = Array.isArray(data.orders) ? data.orders : (data.orders?.orders || []);
+      const count = data.totalCount ?? data.orders?.totalCount ?? orderList.length;
+      setOrders(orderList);
+      setTotalCount(count);
     } catch (err) {
       setError(err.message || 'Could not load orders. Please try again.');
       setOrders([]);
@@ -205,7 +210,7 @@ function MyOrdersView() {
                 disabled={!hasNext}
               >
                 Next
-                <ChevronLeft size={16} style={{ transform: 'rotate(180deg)' }} />
+                <ChevronRight size={16} />
               </button>
             </div>
           )}

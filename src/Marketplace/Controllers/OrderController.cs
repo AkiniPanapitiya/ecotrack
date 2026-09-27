@@ -59,7 +59,7 @@ public class OrderController : ControllerBase
         var (success, statusCode, message, orders) = await _orderService.GetMyOrdersAsync(
             Guid.Parse(buyerId), page, pageSize, cancellationToken);
 
-        return Ok(new { message, orders });
+        return Ok(new { message, orders = orders.Orders, totalCount = orders.TotalCount, page, pageSize, hasMore = orders.HasMore });
     }
 
     /// GET /api/orders/{id} — Get a single order by ID
@@ -75,10 +75,10 @@ public class OrderController : ControllerBase
         if (string.IsNullOrEmpty(buyerId))
             return Unauthorized(new { message = "Invalid token." });
 
-        var all = await _orderService.GetMyOrdersAsync(
+        var (_, _, _, orderResp) = await _orderService.GetMyOrdersAsync(
             Guid.Parse(buyerId), 1, 100, cancellationToken);
 
-        var found = all.Orders.Orders.FirstOrDefault(o => o.Id == id);
+        var found = orderResp.Orders.FirstOrDefault(o => o.Id == id);
         if (found == null)
             return NotFound(new { message = "Order not found." });
 
