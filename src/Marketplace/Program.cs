@@ -70,11 +70,13 @@ var connectionString = builder.Configuration.GetConnectionString("MarketplaceDb"
     ?? "Server=localhost;Database=ecotrack_marketplace_db;Uid=root;Pwd=;";
 builder.Services.AddSingleton<IDbConnectionFactory>(new DbConnectionFactory(connectionString));
 
-// Register valuation + listing services
+// Register valuation + listing + order services
 builder.Services.AddScoped<IValuationRepository, ValuationRepository>();
 builder.Services.AddScoped<IValuationService, ValuationService>();
 builder.Services.AddScoped<IListingRepository, ListingRepository>();
 builder.Services.AddScoped<IListingService, ListingService>();
+builder.Services.AddScoped<IOrderRepository, OrderRepository>();
+builder.Services.AddScoped<IOrderService, OrderService>();
 
 var app = builder.Build();
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { LayoutGrid, Search, ChevronLeft, ChevronRight, AlertCircle, CheckCircle2, Loader2, DollarSign, Mail, Clock, X as XIcon } from 'lucide-react';
+import { LayoutGrid, Search, ChevronLeft, ChevronRight, AlertCircle, CheckCircle2, Loader2, DollarSign, Mail, Clock, X as XIcon, ShoppingCart } from 'lucide-react';
 
 const PAGE_SIZE = 12;
 
@@ -14,6 +14,9 @@ function MarketplaceView() {
   const [searchTerm, setSearchTerm] = useState('');
   const [error, setError] = useState('');
   const [selectedListing, setSelectedListing] = useState(null);
+  const [showOrderModal, setShowOrderModal] = useState(false);
+  const [orderError, setOrderError] = useState('');
+  const [placingOrder, setPlacingOrder] = useState(false);
 
   const authToken = token || localStorage.getItem('ecotrack_token');
 
@@ -39,9 +42,7 @@ function MarketplaceView() {
       params.set('pageSize', pageSize);
 
       const res = await fetch(`/api/listings?${params.toString()}`, {
-        headers: {
-          ...(authToken ? { Authorization: `Bearer ${authToken}` } : {})
-        }
+        headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
       });
       if (!res.ok) throw new Error('Failed to load listings');
       const data = await res.json();
@@ -52,6 +53,36 @@ function MarketplaceView() {
       setListings([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handlePlaceOrder = async () => {
+    setOrderError('');
+    setPlacingOrder(true);
+    try {
+      const token = authToken || localStorage.getItem('ecotrack_token');
+      const res = await fetch('/api/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ listingId: selectedListing.id }),
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.message || 'Failed to place order.');
+      }
+      setShowOrderModal(false);
+      setSelectedListing(prev => ({ ...prev, status: 'Reserved' }));
+      // Show a brief success toast-like message
+      setOrderError('');
+      // Reload listings to reflect status change
+      loadListings();
+    } catch (err) {
+      setOrderError(err.message || 'Failed to place order. Please try again.');
+    } finally {
+      setPlacingOrder(false);
     }
   };
 
@@ -200,13 +231,74 @@ function MarketplaceView() {
           </div>
 
           {/* Contact button */}
-          <button
-          className="btn btn-primary"
-          style={{ width: '100%', padding: '0.8rem', fontSize: '0.95rem' }}
-          >
-          <Mail size={18} style={{ marginRight: '0.5rem' }} />
-          Contact Seller
-          </button>
+          {selectedListing.status === 'Available' && (
+            <button
+              className="btn btn-primary"
+              style={{ width: '100%', padding: '0.8rem', fontSize: '0.95rem', marginBottom: '0.75rem' }}
+              onClick={() => setShowOrderModal(true)}
+            >
+              <ShoppingCart size={18} style={{ marginRight: '0.5rem' }} />
+              Order Now
+            </button>
+          )}
+          {selectedListing.status !== 'Available' && (
+            <button
+              className="btn btn-secondary"
+              style={{ width: '100%', padding: '0.8rem', fontSize: '0.95rem' }}
+              disabled
+            >
+              <Clock size={18} style={{ marginRight: '0.5rem' }} />
+              {selectedListing.status === 'Reserved' ? 'Reserved by another buyer' : 'No longer available'}
+            </button>
+          )}
+
+          {/* Order confirmation modal */}
+          {showOrderModal && (
+            <div style={{
+              position: 'fixed', inset: 0, zIndex: 1100,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
+            }}>
+              <div className="glass-card" style={{ maxWidth: '400px', width: '90%', padding: '2rem' }}>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 800, margin: '0 0 1rem' }}>
+                  Confirm Order
+                </h3>
+                <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1.25rem' }}>
+                  You are about to purchase <strong>{selectedListing.title}</strong> for{' '}
+                  <strong style={{ color: 'var(--accent)' }}>
+                    {formatPrice(selectedListing.price)}
+                  </strong>
+                </p>
+                {orderError && (
+                  <div className="alert alert-danger" style={{ marginBottom: '1rem' }}>
+                    <AlertCircle size={16} />
+                    <span>{orderError}</span>
+                  </div>
+                )}
+                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                  <button
+                    className="btn btn-secondary"
+                    style={{ flex: 1, padding: '0.7rem' }}
+                    onClick={() => setShowOrderModal(false)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    className="btn btn-primary"
+                    style={{ flex: 1, padding: '0.7rem' }}
+                    onClick={handlePlaceOrder}
+                    disabled={placingOrder}
+                  >
+                    {placingOrder ? (
+                      <><Loader2 size={16} className="spin" style={{ marginRight: '0.4rem' }} />Processing...</>
+                    ) : (
+                      <><ShoppingCart size={16} className="spin" style={{ marginRight: '0.4rem' }} />Place Order</>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -246,7 +338,7 @@ function MarketplaceView() {
             }}
             onClick={() => handleSearch('')}
           >
-            <X size={14} />
+            <XIcon size={14} />
           </button>
         )}
       </div>

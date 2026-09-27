@@ -41,6 +41,10 @@ export const Navbar = () => {
                 <Tag size={15} />
                 <span>Marketplace</span>
               </Link>
+              <Link to="/my-orders" className="nav-link" style={{ display: 'flex', alignItems: 'center', gap: '5px', whiteSpace: 'nowrap' }}>
+                <PackageSearch size={15} />
+                <span>My Orders</span>
+              </Link>
             </>
           )}
 

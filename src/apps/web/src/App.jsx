@@ -22,6 +22,7 @@ import ValuationView from './views/ValuationView';
 import { RecyclerPickupBookingView } from './views/RecyclerPickupBookingView';
 import MarketplaceView from './views/MarketplaceView';
 import CreateListingView from './views/CreateListingView';
+import MyOrdersView from './views/MyOrdersView';
 
 const HomeRedirect = () => {
   const { isAuthenticated } = useAuth();
@@ -53,6 +54,7 @@ export const App = () => {
                   <Route path="/access-denied" element={<AccessDeniedView />} />
                   <Route path="/marketplace" element={<MarketplaceView />} />
                   <Route path="/create-listing" element={<ProtectedRoute rolesAllowed={['Recycler']}><CreateListingView /></ProtectedRoute>} />
+                  <Route path="/my-orders" element={<ProtectedRoute rolesAllowed={['User']}><MyOrdersView /></ProtectedRoute>} />
                   <Route path="/" element={<HomeRedirect />} />
             </Routes>
           </main>
