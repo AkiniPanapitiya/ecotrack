@@ -66,6 +66,10 @@ export const Navbar = () => {
               <Plus size={15} />
               <span className="nav-text">Create Listing</span>
             </Link>
+            <Link to="/disposal-certification" className="nav-link" style={{ display: 'flex', alignItems: 'center', gap: '5px', whiteSpace: 'nowrap' }}>
+              <Recycle size={15} />
+              <span className="nav-text">Disposal Certification</span>
+            </Link>
           </>
           )}
 
