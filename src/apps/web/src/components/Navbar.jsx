@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Leaf, User, Shield, LogOut, FileText, LayoutDashboard, Building2, Truck, PackageSearch, Users, Tag, Plus } from 'lucide-react';
+import { Leaf, User, Shield, LogOut, FileText, LayoutDashboard, Building2, Truck, PackageSearch, Users, Tag, Plus, Recycle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export const Navbar = () => {
@@ -65,6 +65,10 @@ export const Navbar = () => {
             <Link to="/create-listing" className="nav-link" style={{ display: 'flex', alignItems: 'center', gap: '5px', whiteSpace: 'nowrap' }}>
               <Plus size={15} />
               <span className="nav-text">Create Listing</span>
+            </Link>
+            <Link to="/disposal-certification" className="nav-link" style={{ display: 'flex', alignItems: 'center', gap: '5px', whiteSpace: 'nowrap' }}>
+              <Recycle size={15} />
+              <span className="nav-text">Disposal Certification</span>
             </Link>
           </>
           )}

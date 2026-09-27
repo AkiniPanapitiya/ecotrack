@@ -88,11 +88,8 @@ export const logisticsApi = {
   reschedulePickup: (id, data) => logisticsClient.put(`/pickup/${id}/reschedule`, data),
 };
 
-// Sprint 3: Marketplace Endpoints
-export const marketplaceApi = {
-  getHealth: () => marketplaceClient.get('/health'),
-  getListings: () => marketplaceClient.get('/listings'),
-  getListingById: (id) => marketplaceClient.get(`/listings/${id}`),
+// ECO-71 / E7.1: Disposal Certification Endpoints
+export const disposalApi = {
+  createCertificate: (data) => logisticsClient.post('/disposal/certificate', data),
+  getCertificate: (pickupItemId) => logisticsClient.get(`/disposal/certificate/${pickupItemId}`),
 };
-
-export default api;

@@ -200,6 +200,11 @@ button, input, select, textarea {
   background: rgba(17, 24, 39, 0.95);
 }
 
+select option {
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
+}
+
 .form-error {
   color: #f87171;
   font-size: 0.8rem;

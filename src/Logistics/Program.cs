@@ -50,6 +50,8 @@ builder.Services.AddCors(options =>
 builder.Services.AddSingleton<IDbConnectionFactory, DbConnectionFactory>();
 builder.Services.AddScoped<IPickupRepository, PickupRepository>();
 builder.Services.AddScoped<IPickupService, PickupService>();
+builder.Services.AddScoped<IDisposalCertificateRepository, DisposalCertificateRepository>();
+builder.Services.AddScoped<IDisposalCertificateService, DisposalCertificateService>();
 
 // Configure Swagger / OpenAPI
 builder.Services.AddEndpointsApiExplorer();
