@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Leaf, User, Shield, LogOut, FileText, LayoutDashboard, Building2, Truck, PackageSearch, Users, Tag, Plus } from 'lucide-react';
+import { Leaf, User, Shield, LogOut, FileText, LayoutDashboard, Building2, Truck, PackageSearch, Users, Tag, Plus, Recycle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export const Navbar = () => {
