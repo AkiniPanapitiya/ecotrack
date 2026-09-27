@@ -50,3 +50,24 @@ CREATE TABLE IF NOT EXISTS `Listings` (
     INDEX `idx_listing_status` (`Status`),
     INDEX `idx_listing_recycler` (`RecyclerId`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 3. Orders Table
+-- Records a buyer's purchase of a listed item.
+-- One order per listing (unique constraint on ListingId).
+-- ListingId -> Listings in same DB (enforced by FK)
+-- BuyerId    -> Users in ecotrack_identity_db (validated in app code)
+-- Status flow: Placed -> Completed (or Cancelled)
+-- PriceAtPurchase is snapshot of listing price at order time.
+CREATE TABLE IF NOT EXISTS `Orders` (
+    `Id` VARCHAR(36) NOT NULL PRIMARY KEY,
+    `ListingId` VARCHAR(36) NOT NULL,
+    `BuyerId` VARCHAR(36) NOT NULL,
+    `PriceAtPurchase` DECIMAL(12, 2) NOT NULL,
+    `Status` VARCHAR(20) NOT NULL DEFAULT 'Placed',
+    `CreatedAt` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    `UpdatedAt` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    UNIQUE KEY `uq_order_listing` (`ListingId`),
+    INDEX `idx_order_buyer` (`BuyerId`),
+    INDEX `idx_order_status` (`Status`),
+    CONSTRAINT `fk_order_listing` FOREIGN KEY (`ListingId`) REFERENCES `Listings`(`Id`) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
