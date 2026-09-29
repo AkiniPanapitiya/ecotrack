@@ -219,6 +219,9 @@ public class ListingRepository : IListingRepository
 
     private static ListingResponseDto MapListing(MySqlDataReader reader)
     {
+        var itemName = reader.IsDBNull(reader.GetOrdinal("ItemName")) ? null : reader.GetString("ItemName");
+        var quantity = reader.IsDBNull(reader.GetOrdinal("Quantity")) ? 0 : reader.GetInt32(reader.GetOrdinal("Quantity"));
+
         return new ListingResponseDto
         {
             Id = Guid.Parse(reader.GetString("l_Id")),
@@ -231,6 +234,8 @@ public class ListingRepository : IListingRepository
             Status = reader.GetString("l_Status"),
             CreatedAt = reader.GetDateTime("l_CreatedAt"),
             UpdatedAt = reader.GetDateTime("l_UpdatedAt"),
+            ItemName = itemName,
+            ItemQuantity = quantity,
             Valuation = new ValuationResponseDto
             {
                 Id = Guid.Parse(reader.GetString("v_Id")),
@@ -239,7 +244,9 @@ public class ListingRepository : IListingRepository
                 Price = reader.GetDecimal("v_Price"),
                 Condition = reader.GetString("v_Condition"),
                 CreatedAt = reader.GetDateTime("v_CreatedAt"),
-                UpdatedAt = reader.GetDateTime("v_UpdatedAt")
+                UpdatedAt = reader.GetDateTime("v_UpdatedAt"),
+                ItemName = itemName ?? string.Empty,
+                Quantity = quantity
             }
         };
     }

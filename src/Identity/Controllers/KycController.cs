@@ -39,12 +39,13 @@ public class KycController : ControllerBase
             return Unauthorized(new { message = "Invalid token." });
         }
 
-        // Save uploaded file to disk (simple file copy — adjust path as needed)
+        // Save uploaded files to disk
         string? filePath = null;
+        var uploadDir = Path.Combine(AppContext.BaseDirectory, "uploads", "kyc");
+        Directory.CreateDirectory(uploadDir);
+
         if (dto.File != null && dto.File.Length > 0)
         {
-            var uploadDir = Path.Combine(AppContext.BaseDirectory, "uploads", "kyc");
-            Directory.CreateDirectory(uploadDir);
             var uniqueName = $"{Guid.NewGuid()}_{dto.File.FileName}";
             filePath = Path.Combine(uploadDir, uniqueName);
             await using (var stream = new FileStream(filePath, FileMode.Create))
@@ -53,8 +54,19 @@ public class KycController : ControllerBase
             }
         }
 
+        string? backFilePath = null;
+        if (dto.BackFile != null && dto.BackFile.Length > 0)
+        {
+            var uniqueBackName = $"{Guid.NewGuid()}_{dto.BackFile.FileName}";
+            backFilePath = Path.Combine(uploadDir, uniqueBackName);
+            await using (var stream = new FileStream(backFilePath, FileMode.Create))
+            {
+                await dto.BackFile.CopyToAsync(stream, cancellationToken);
+            }
+        }
+
         var (success, statusCode, message, response) = await _kycService.UploadDocumentAsync(
-            userId.Value, dto, filePath, cancellationToken);
+            userId.Value, dto, filePath, backFilePath, cancellationToken);
 
         return StatusCode(statusCode, new { message, response });
     }
@@ -118,6 +130,35 @@ public class KycController : ControllerBase
             documentId, dto, adminId.Value, cancellationToken);
 
         return StatusCode(statusCode, new { message, document });
+    }
+
+    // ---------------------------------------------------------------
+    // GET /api/kyc/document/{documentId} — Admin or owner
+    // View/download uploaded KYC document
+    // ---------------------------------------------------------------
+    [HttpGet("document/{documentId:guid}")]
+    [Authorize(Roles = "Admin,Recycler")]
+    public async Task<IActionResult> GetDocument(
+        Guid documentId, [FromQuery] string side = "front", CancellationToken cancellationToken = default)
+    {
+        var userId = GetCurrentUserId();
+        if (userId == null)
+        {
+            return Unauthorized(new { message = "Invalid token." });
+        }
+
+        var role = User.FindFirstValue(ClaimTypes.Role) ?? "";
+        var (success, statusCode, message, doc, targetPath, mimeType) = await _kycService.GetDocumentFileAsync(
+            documentId, userId.Value, role, side, cancellationToken);
+
+        if (!success || string.IsNullOrEmpty(targetPath))
+        {
+            return StatusCode(statusCode, new { message });
+        }
+
+        var stream = new FileStream(targetPath, FileMode.Open, FileAccess.Read, FileShare.Read);
+        var mime = string.IsNullOrWhiteSpace(mimeType) ? "application/octet-stream" : mimeType;
+        return File(stream, mime, enableRangeProcessing: true);
     }
 
     private Guid? GetCurrentUserId()

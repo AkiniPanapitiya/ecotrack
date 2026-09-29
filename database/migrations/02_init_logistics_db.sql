@@ -117,6 +117,13 @@ BEGIN
     END IF;
 
     IF NOT EXISTS (
+        SELECT 1 FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'PickupItems' AND COLUMN_NAME = 'UpdatedAt'
+    ) THEN
+        ALTER TABLE `PickupItems` ADD COLUMN `UpdatedAt` DATETIME(6) NULL AFTER `Status`;
+    END IF;
+
+    IF NOT EXISTS (
         SELECT 1 FROM information_schema.STATISTICS
         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'PickupItems' AND INDEX_NAME = 'idx_item_status'
     ) THEN

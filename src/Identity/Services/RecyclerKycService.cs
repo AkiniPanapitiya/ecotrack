@@ -9,7 +9,7 @@ public interface IRecyclerKycService
     // Recycler endpoints
     Task<(bool Success, int StatusCode, string Message, UploadDocumentResponseDto? Response)>
         UploadDocumentAsync(Guid userId, UploadDocumentRequestDto dto,
-            string? filePath, CancellationToken cancellationToken = default);
+            string? filePath, string? backFilePath = null, CancellationToken cancellationToken = default);
 
     Task<(bool Success, int StatusCode, string Message, MyVerificationStatusDto? Response)>
         GetMyVerificationStatusAsync(Guid userId, CancellationToken cancellationToken = default);
@@ -21,6 +21,14 @@ public interface IRecyclerKycService
     Task<(bool Success, int StatusCode, string Message, RecyclerDocument? Document)>
         ReviewDocumentAsync(Guid documentId, AdminReviewRequestDto dto,
             Guid adminId, CancellationToken cancellationToken = default);
+
+    Task<(bool Success, int StatusCode, string Message, RecyclerDocument? Document, string? TargetFilePath, string? MimeType)>
+        GetDocumentFileAsync(Guid documentId, Guid requesterId, string requesterRole, string side = "front",
+            CancellationToken cancellationToken = default);
+
+    Task<(bool Success, int StatusCode, string Message, RecyclerDocument? Document)>
+        GetDocumentAsync(Guid documentId, Guid requesterId, string requesterRole,
+            CancellationToken cancellationToken = default);
 }
 
 public class RecyclerKycService : IRecyclerKycService
@@ -48,7 +56,7 @@ public class RecyclerKycService : IRecyclerKycService
     // ---------------------------------------------------------------
     public async Task<(bool Success, int StatusCode, string Message, UploadDocumentResponseDto? Response)>
         UploadDocumentAsync(Guid userId, UploadDocumentRequestDto dto,
-            string? filePath, CancellationToken cancellationToken = default)
+            string? filePath, string? backFilePath = null, CancellationToken cancellationToken = default)
     {
         // 1. Check user exists and is a recycler
         var user = await _userRepository.GetByIdAsync(userId, cancellationToken);
@@ -76,7 +84,7 @@ public class RecyclerKycService : IRecyclerKycService
             return (false, 400, "DocumentType must be 'ID' or 'BusinessProof'.", null);
         }
 
-        // 4. Validate file
+        // 4. Validate main file
         if (dto.File == null || dto.File.Length == 0)
         {
             return (false, 400, "No file uploaded.", null);
@@ -95,10 +103,32 @@ public class RecyclerKycService : IRecyclerKycService
                 $"File too large. Maximum size is {MaxFileSizeBytes / 1024 / 1024} MB.", null);
         }
 
+        // Validate back file if provided
+        string? backFileName = null;
+        string? backFileType = null;
+        long backFileSize = 0;
+
+        if (dto.BackFile != null && dto.BackFile.Length > 0)
+        {
+            var backContentType = dto.BackFile.ContentType.ToLowerInvariant();
+            if (!AllowedTypes.Contains(backContentType))
+            {
+                return (false, 400, "Invalid back file type. Only JPEG, PNG, and PDF are allowed.", null);
+            }
+            if (dto.BackFile.Length > MaxFileSizeBytes)
+            {
+                return (false, 400, $"Back file too large. Maximum size is {MaxFileSizeBytes / 1024 / 1024} MB.", null);
+            }
+            backFileName = dto.BackFile.FileName;
+            backFileType = backContentType;
+            backFileSize = dto.BackFile.Length;
+        }
+
         // 5. Save document record
         var document = await _documentRepository.CreateDocumentAsync(
             userId, docType,
             dto.File.FileName, filePath ?? "", contentType, dto.File.Length,
+            backFileName, backFilePath, backFileType, backFileSize,
             cancellationToken);
 
         // 6. Audit log
@@ -108,7 +138,7 @@ public class RecyclerKycService : IRecyclerKycService
             UserEmail = user.Email,
             Action = "KYC_DOCUMENT_UPLOADED",
             Role = user.Role,
-            Details = $"Uploaded {docType} document: {dto.File.FileName} ({document.Id})",
+            Details = $"Uploaded {docType} document: {dto.File.FileName}{(backFileName != null ? $" and back: {backFileName}" : "")} ({document.Id})",
             IpAddress = null,
             Timestamp = DateTime.UtcNow
         }, cancellationToken);
@@ -118,6 +148,7 @@ public class RecyclerKycService : IRecyclerKycService
             DocumentId = document.Id,
             DocumentType = document.DocumentType,
             FileName = document.FileName,
+            BackFileName = document.BackFileName,
             Status = document.Status,
             SubmittedAt = document.SubmittedAt,
             Message = "Document submitted for review."
@@ -142,7 +173,8 @@ public class RecyclerKycService : IRecyclerKycService
         {
             return (true, 200, "No KYC document submitted yet.", new MyVerificationStatusDto
             {
-                HasSubmittedDocument = false
+                HasSubmittedDocument = false,
+                Status = "Not Submitted"
             });
         }
 
@@ -152,6 +184,7 @@ public class RecyclerKycService : IRecyclerKycService
             DocumentId = doc.Id,
             DocumentType = doc.DocumentType,
             FileName = doc.FileName,
+            BackFileName = doc.BackFileName,
             Status = doc.Status,
             SubmittedAt = doc.SubmittedAt,
             ReviewedAt = doc.ReviewedAt,
@@ -175,6 +208,11 @@ public class RecyclerKycService : IRecyclerKycService
             RecyclerEmail = s.Recycler.Email,
             DocumentType = s.Doc.DocumentType,
             FileName = s.Doc.FileName,
+            FileType = s.Doc.FileType,
+            FileSize = s.Doc.FileSize,
+            BackFileName = s.Doc.BackFileName,
+            BackFileType = s.Doc.BackFileType,
+            BackFileSize = s.Doc.BackFileSize,
             SubmittedAt = s.Doc.SubmittedAt
         }).ToList();
 
@@ -247,5 +285,65 @@ public class RecyclerKycService : IRecyclerKycService
             : "Document rejected. Please re-upload a valid document.";
 
         return (true, 200, message, updatedDoc);
+    }
+
+    // ---------------------------------------------------------------
+    // GET document file — admin or owner
+    // ---------------------------------------------------------------
+    public async Task<(bool Success, int StatusCode, string Message, RecyclerDocument? Document)>
+        GetDocumentAsync(Guid documentId, Guid requesterId, string requesterRole,
+            CancellationToken cancellationToken = default)
+    {
+        var doc = await _documentRepository.GetByIdAsync(documentId, cancellationToken);
+        if (doc == null)
+        {
+            return (false, 404, "Document not found.", null);
+        }
+
+        var isAdmin = string.Equals(requesterRole, "Admin", StringComparison.OrdinalIgnoreCase);
+        if (!isAdmin && doc.RecyclerId != requesterId)
+        {
+            return (false, 403, "You are not authorized to view this document.", null);
+        }
+
+        if (string.IsNullOrWhiteSpace(doc.FilePath) || !File.Exists(doc.FilePath))
+        {
+            return (false, 404, "Document file not found on server.", null);
+        }
+
+        return (true, 200, "OK.", doc);
+    }
+
+    public async Task<(bool Success, int StatusCode, string Message, RecyclerDocument? Document, string? TargetFilePath, string? MimeType)>
+        GetDocumentFileAsync(Guid documentId, Guid requesterId, string requesterRole, string side = "front",
+            CancellationToken cancellationToken = default)
+    {
+        var doc = await _documentRepository.GetByIdAsync(documentId, cancellationToken);
+        if (doc == null)
+        {
+            return (false, 404, "Document not found.", null, null, null);
+        }
+
+        var isAdmin = string.Equals(requesterRole, "Admin", StringComparison.OrdinalIgnoreCase);
+        if (!isAdmin && doc.RecyclerId != requesterId)
+        {
+            return (false, 403, "You are not authorized to view this document.", null, null, null);
+        }
+
+        if (string.Equals(side, "back", StringComparison.OrdinalIgnoreCase))
+        {
+            if (string.IsNullOrWhiteSpace(doc.BackFilePath) || !File.Exists(doc.BackFilePath))
+            {
+                return (false, 404, "Back side document not found.", null, null, null);
+            }
+            return (true, 200, "OK.", doc, doc.BackFilePath, doc.BackFileType);
+        }
+
+        if (string.IsNullOrWhiteSpace(doc.FilePath) || !File.Exists(doc.FilePath))
+        {
+            return (false, 404, "Document file not found on server.", null, null, null);
+        }
+
+        return (true, 200, "OK.", doc, doc.FilePath, doc.FileType);
     }
 }

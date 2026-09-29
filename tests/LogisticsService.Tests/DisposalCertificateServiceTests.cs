@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using EcoTrack.LogisticsService.Data;
 using EcoTrack.LogisticsService.DTOs;
 using EcoTrack.LogisticsService.Models;
 using EcoTrack.LogisticsService.Repositories;
@@ -12,13 +13,15 @@ public class DisposalCertificateServiceTests
 {
     private readonly Mock<IDisposalCertificateRepository> _certRepoMock;
     private readonly Mock<IPickupRepository> _pickupRepoMock;
+    private readonly Mock<IDbConnectionFactory> _connectionFactoryMock;
     private readonly DisposalCertificateService _service;
 
     public DisposalCertificateServiceTests()
     {
         _certRepoMock = new Mock<IDisposalCertificateRepository>();
         _pickupRepoMock = new Mock<IPickupRepository>();
-        _service = new DisposalCertificateService(_certRepoMock.Object, _pickupRepoMock.Object);
+        _connectionFactoryMock = new Mock<IDbConnectionFactory>();
+        _service = new DisposalCertificateService(_certRepoMock.Object, _pickupRepoMock.Object, _connectionFactoryMock.Object);
     }
 
     private static PickupRequest CreatePickupWithItem(Guid pickupId, Guid userId, Guid recyclerId, Guid itemId, string itemName = "Test Item")
@@ -66,7 +69,8 @@ public class DisposalCertificateServiceTests
             CreatedAt = DateTime.UtcNow,
             ItemName = "Test Item",
             Quantity = 1,
-            ItemCondition = "Used"
+            ItemCondition = "Used",
+            UserId = pickup.UserId
         };
 
         _pickupRepoMock.Setup(r => r.GetByRecyclerIdAsync(recyclerId, It.IsAny<CancellationToken>()))
@@ -101,7 +105,6 @@ public class DisposalCertificateServiceTests
         Assert.Equal("Disposal method is required.", message);
         Assert.Null(cert);
 
-        // Repo should never be called
         _certRepoMock.Verify(r => r.CreateCertificateAsync(
             It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<string>(),
             It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
@@ -139,8 +142,7 @@ public class DisposalCertificateServiceTests
         Assert.Null(cert);
 
         _certRepoMock.Verify(r => r.CreateCertificateAsync(
-            It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<string>(),
-            It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+            It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -149,7 +151,6 @@ public class DisposalCertificateServiceTests
         var recyclerId = Guid.NewGuid();
         var pickupItemId = Guid.NewGuid();
 
-        // Recycler has pickups, but none contain this item
         var pickup = CreatePickupWithItem(
             Guid.NewGuid(), Guid.NewGuid(), recyclerId, Guid.NewGuid());
 
@@ -163,8 +164,7 @@ public class DisposalCertificateServiceTests
         Assert.Equal(404, statusCode);
         Assert.Null(cert);
         _certRepoMock.Verify(r => r.CreateCertificateAsync(
-            It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<string>(),
-            It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+            It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -181,7 +181,8 @@ public class DisposalCertificateServiceTests
             RecyclerId = recyclerId, RecyclerName = "Recycler",
             DisposalMethod = "Recycling", DisposedAt = DateTime.UtcNow,
             CreatedAt = DateTime.UtcNow, ItemName = "Test Item",
-            Quantity = 1, ItemCondition = "Used"
+            Quantity = 1, ItemCondition = "Used",
+            UserId = pickup.UserId
         };
 
         _pickupRepoMock.Setup(r => r.GetByRecyclerIdAsync(recyclerId, It.IsAny<CancellationToken>()))
@@ -200,13 +201,43 @@ public class DisposalCertificateServiceTests
             pickupItemId, recyclerId, "Recycler", "Recycling", It.IsAny<CancellationToken>()), Times.Once);
     }
 
+    [Fact]
+    public async Task CreateCertificate_AlreadyDisposed_Returns409()
+    {
+        var recyclerId = Guid.NewGuid();
+        var pickupItemId = Guid.NewGuid();
+        var pickupId = Guid.NewGuid();
+
+        var pickup = CreatePickupWithItem(pickupId, Guid.NewGuid(), recyclerId, pickupItemId);
+        var existingCert = new DisposalCertificateDto { Id = Guid.NewGuid(), PickupItemId = pickupItemId };
+
+        _pickupRepoMock.Setup(r => r.GetByRecyclerIdAsync(recyclerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<PickupRequest> { pickup });
+
+        _certRepoMock.Setup(r => r.GetByPickupItemIdAsync(pickupItemId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(existingCert);
+
+        var (success, statusCode, message, cert) = await _service.CreateCertificateAsync(
+            recyclerId, "Recycler", pickupItemId, "Recycling", CancellationToken.None);
+
+        Assert.False(success);
+        Assert.Equal(409, statusCode);
+        Assert.Equal("This item has already been certified as disposed.", message);
+        Assert.Null(cert);
+
+        _certRepoMock.Verify(r => r.CreateCertificateAsync(
+            It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
     // ── GetItemWithCertificateAsync ─────────────────────────────────────
+
+    // TC-33-03: Owner can view their own certificate
 
     [Fact]
     public async Task GetItemWithCertificate_OwnerCanView_CertificateReturned()
     {
         var pickupItemId = Guid.NewGuid();
-        var userId = Guid.NewGuid();
+        var userId = Guid.NewGuid();       // the owner
         var recyclerId = Guid.NewGuid();
         var pickupId = Guid.NewGuid();
         var certId = Guid.NewGuid();
@@ -223,7 +254,8 @@ public class DisposalCertificateServiceTests
             CreatedAt = DateTime.UtcNow,
             ItemName = "Laptop",
             Quantity = 1,
-            ItemCondition = "Used"
+            ItemCondition = "Used",
+            UserId = userId       // ← owner's UserId from JOIN
         };
 
         _certRepoMock.Setup(r => r.GetByPickupItemIdAsync(pickupItemId, It.IsAny<CancellationToken>()))
@@ -243,7 +275,82 @@ public class DisposalCertificateServiceTests
         Assert.Equal("Laptop", item.ItemName);
         Assert.Equal("Recycling", item.Certificate.DisposalMethod);
         Assert.Equal("Disposed", item.Status);
+        Assert.Equal(userId, item.Certificate.UserId);   // UserId must be populated
     }
+
+    [Fact]
+    public async Task GetItemWithCertificate_OwnerWithCorrectUserId_Gets200()
+    {
+        // Explicitly tests that UserId on the DTO is used for ownership check
+        var pickupItemId = Guid.NewGuid();
+        var ownerId = Guid.NewGuid();
+        var recyclerId = Guid.NewGuid();
+        var certId = Guid.NewGuid();
+
+        var cert = new DisposalCertificateDto
+        {
+            Id = certId,
+            PickupItemId = pickupItemId,
+            RecyclerId = recyclerId,
+            RecyclerName = "Jane Recycler",
+            DisposalMethod = "Shredding",
+            DisposedAt = DateTime.UtcNow,
+            CreatedAt = DateTime.UtcNow,
+            ItemName = "Monitor",
+            Quantity = 1,
+            ItemCondition = "Used",
+            UserId = ownerId
+        };
+
+        _certRepoMock.Setup(r => r.GetByPickupItemIdAsync(pickupItemId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(cert);
+
+        var (success, statusCode, message, item) = await _service.GetItemWithCertificateAsync(
+            pickupItemId, ownerId, CancellationToken.None);
+
+        Assert.True(success);
+        Assert.Equal(200, statusCode);
+        Assert.NotNull(item);
+        Assert.Equal(ownerId, item.Certificate.UserId);
+    }
+
+    [Fact]
+    public async Task GetItemWithCertificate_UserIdEmpty_NotOwner_Returns403()
+    {
+        // Bug: if UserId is Guid.Empty (not populated), owner check fails
+        var pickupItemId = Guid.NewGuid();
+        var ownerId = Guid.NewGuid();
+        var recyclerId = Guid.NewGuid();
+        var certId = Guid.NewGuid();
+
+        var cert = new DisposalCertificateDto
+        {
+            Id = certId,
+            PickupItemId = pickupItemId,
+            RecyclerId = recyclerId,
+            RecyclerName = "Jane Recycler",
+            DisposalMethod = "Shredding",
+            DisposedAt = DateTime.UtcNow,
+            CreatedAt = DateTime.UtcNow,
+            ItemName = "Monitor",
+            Quantity = 1,
+            ItemCondition = "Used",
+            UserId = Guid.Empty        // ← bug state: UserId not populated
+        };
+
+        _certRepoMock.Setup(r => r.GetByPickupItemIdAsync(pickupItemId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(cert);
+
+        var (success, statusCode, message, item) = await _service.GetItemWithCertificateAsync(
+            pickupItemId, ownerId, CancellationToken.None);
+
+        Assert.False(success);
+        Assert.Equal(403, statusCode);
+        Assert.Contains("not authorized", message);
+        Assert.Null(item);
+    }
+
+    // TC-33-03: Issuing recycler can view
 
     [Fact]
     public async Task GetItemWithCertificate_IssuingRecyclerCanView()
@@ -261,7 +368,8 @@ public class DisposalCertificateServiceTests
             RecyclerId = recyclerId, RecyclerName = "John Recycler",
             DisposalMethod = "Shredding", DisposedAt = DateTime.UtcNow,
             CreatedAt = DateTime.UtcNow, ItemName = "Monitor",
-            Quantity = 1, ItemCondition = "Used"
+            Quantity = 1, ItemCondition = "Used",
+            UserId = otherUserId
         };
 
         _certRepoMock.Setup(r => r.GetByPickupItemIdAsync(pickupItemId, It.IsAny<CancellationToken>()))
@@ -279,6 +387,8 @@ public class DisposalCertificateServiceTests
         Assert.Equal("Shredding", item.Certificate.DisposalMethod);
     }
 
+    // TC-33-03: Unrelated user gets 403
+
     [Fact]
     public async Task GetItemWithCertificate_UnrelatedUser_Returns403()
     {
@@ -293,7 +403,8 @@ public class DisposalCertificateServiceTests
             RecyclerId = recyclerId, RecyclerName = "John Recycler",
             DisposalMethod = "Recycling", DisposedAt = DateTime.UtcNow,
             CreatedAt = DateTime.UtcNow, ItemName = "Laptop",
-            Quantity = 1, ItemCondition = "Used"
+            Quantity = 1, ItemCondition = "Used",
+            UserId = Guid.NewGuid()   // different from unrelatedUserId
         };
 
         _certRepoMock.Setup(r => r.GetByPickupItemIdAsync(pickupItemId, It.IsAny<CancellationToken>()))
@@ -349,7 +460,8 @@ public class DisposalCertificateServiceTests
             CreatedAt = new DateTime(2026, 9, 26, 14, 30, 0, DateTimeKind.Utc),
             ItemName = "Dell Laptop",
             Quantity = 2,
-            ItemCondition = "Used"
+            ItemCondition = "Used",
+            UserId = userId
         };
 
         _certRepoMock.Setup(r => r.GetByPickupItemIdAsync(pickupItemId, It.IsAny<CancellationToken>()))

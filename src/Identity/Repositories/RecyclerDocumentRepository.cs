@@ -11,11 +11,16 @@ public interface IRecyclerDocumentRepository
     Task<RecyclerDocument> CreateDocumentAsync(
         Guid recyclerId, string documentType,
         string fileName, string filePath, string fileType, long fileSize,
+        string? backFileName = null, string? backFilePath = null, string? backFileType = null, long backFileSize = 0,
         CancellationToken cancellationToken = default);
 
     // Recycler: get my latest document
     Task<RecyclerDocument?> GetLatestByRecyclerIdAsync(
         Guid recyclerId, CancellationToken cancellationToken = default);
+
+    // Get document by Id
+    Task<RecyclerDocument?> GetByIdAsync(
+        Guid documentId, CancellationToken cancellationToken = default);
 
     // Admin: get all pending submissions
     Task<List<(RecyclerDocument Doc, User Recycler)>> GetPendingSubmissionsAsync(
@@ -43,12 +48,13 @@ public class RecyclerDocumentRepository : IRecyclerDocumentRepository
     public async Task<RecyclerDocument> CreateDocumentAsync(
         Guid recyclerId, string documentType,
         string fileName, string filePath, string fileType, long fileSize,
+        string? backFileName = null, string? backFilePath = null, string? backFileType = null, long backFileSize = 0,
         CancellationToken cancellationToken = default)
     {
         await using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
         const string sql = @"
-            INSERT INTO RecyclerDocuments (Id, RecyclerId, DocumentType, FileName, FilePath, FileType, FileSize, Status, SubmittedAt)
-            VALUES (@Id, @RecyclerId, @DocumentType, @FileName, @FilePath, @FileType, @FileSize, 'Pending', @SubmittedAt);";
+            INSERT INTO RecyclerDocuments (Id, RecyclerId, DocumentType, FileName, FilePath, FileType, FileSize, BackFileName, BackFilePath, BackFileType, BackFileSize, Status, SubmittedAt)
+            VALUES (@Id, @RecyclerId, @DocumentType, @FileName, @FilePath, @FileType, @FileSize, @BackFileName, @BackFilePath, @BackFileType, @BackFileSize, 'Pending', @SubmittedAt);";
 
         await using var command = new MySqlCommand(sql, connection);
         command.Parameters.AddWithValue("@Id", Guid.NewGuid().ToString());
@@ -58,13 +64,17 @@ public class RecyclerDocumentRepository : IRecyclerDocumentRepository
         command.Parameters.AddWithValue("@FilePath", filePath.Trim());
         command.Parameters.AddWithValue("@FileType", fileType.Trim());
         command.Parameters.AddWithValue("@FileSize", fileSize);
+        command.Parameters.AddWithValue("@BackFileName", (object?)backFileName?.Trim() ?? DBNull.Value);
+        command.Parameters.AddWithValue("@BackFilePath", (object?)backFilePath?.Trim() ?? DBNull.Value);
+        command.Parameters.AddWithValue("@BackFileType", (object?)backFileType?.Trim() ?? DBNull.Value);
+        command.Parameters.AddWithValue("@BackFileSize", backFileSize);
         command.Parameters.AddWithValue("@SubmittedAt", DateTime.UtcNow);
 
         await command.ExecuteNonQueryAsync(cancellationToken);
 
         // Fetch back the created document
         const string fetchSql = @"
-            SELECT Id, RecyclerId, DocumentType, FileName, FilePath, FileType, FileSize, Status, SubmittedAt, ReviewedBy, ReviewedAt, ReviewNote
+            SELECT Id, RecyclerId, DocumentType, FileName, FilePath, FileType, FileSize, BackFileName, BackFilePath, BackFileType, BackFileSize, Status, SubmittedAt, ReviewedBy, ReviewedAt, ReviewNote
             FROM RecyclerDocuments
             WHERE RecyclerId = @RecyclerId
             ORDER BY SubmittedAt DESC
@@ -83,7 +93,7 @@ public class RecyclerDocumentRepository : IRecyclerDocumentRepository
     {
         await using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
         const string sql = @"
-            SELECT Id, RecyclerId, DocumentType, FileName, FilePath, FileType, FileSize, Status, SubmittedAt, ReviewedBy, ReviewedAt, ReviewNote
+            SELECT Id, RecyclerId, DocumentType, FileName, FilePath, FileType, FileSize, BackFileName, BackFilePath, BackFileType, BackFileSize, Status, SubmittedAt, ReviewedBy, ReviewedAt, ReviewNote
             FROM RecyclerDocuments
             WHERE RecyclerId = @RecyclerId
             ORDER BY SubmittedAt DESC
@@ -100,6 +110,27 @@ public class RecyclerDocumentRepository : IRecyclerDocumentRepository
         return null;
     }
 
+    public async Task<RecyclerDocument?> GetByIdAsync(
+        Guid documentId, CancellationToken cancellationToken = default)
+    {
+        await using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
+        const string sql = @"
+            SELECT Id, RecyclerId, DocumentType, FileName, FilePath, FileType, FileSize, BackFileName, BackFilePath, BackFileType, BackFileSize, Status, SubmittedAt, ReviewedBy, ReviewedAt, ReviewNote
+            FROM RecyclerDocuments
+            WHERE Id = @Id
+            LIMIT 1;";
+
+        await using var command = new MySqlCommand(sql, connection);
+        command.Parameters.AddWithValue("@Id", documentId.ToString());
+
+        await using var reader = await command.ExecuteReaderAsync(CommandBehavior.SingleRow, cancellationToken);
+        if (await reader.ReadAsync(cancellationToken))
+        {
+            return MapDocument(reader);
+        }
+        return null;
+    }
+
     public async Task<List<(RecyclerDocument Doc, User Recycler)>> GetPendingSubmissionsAsync(
         CancellationToken cancellationToken = default)
     {
@@ -107,7 +138,9 @@ public class RecyclerDocumentRepository : IRecyclerDocumentRepository
 
         await using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
         const string sql = @"
-            SELECT rd.Id, rd.RecyclerId, rd.DocumentType, rd.FileName, rd.FilePath, rd.FileType, rd.FileSize, rd.Status, rd.SubmittedAt, rd.ReviewedBy, rd.ReviewedAt, rd.ReviewNote,
+            SELECT rd.Id, rd.RecyclerId, rd.DocumentType, rd.FileName, rd.FilePath, rd.FileType, rd.FileSize, 
+                   rd.BackFileName, rd.BackFilePath, rd.BackFileType, rd.BackFileSize,
+                   rd.Status, rd.SubmittedAt, rd.ReviewedBy, rd.ReviewedAt, rd.ReviewNote,
                    u.Id, u.FullName, u.Email, u.Role
             FROM RecyclerDocuments rd
             INNER JOIN Users u ON rd.RecyclerId = u.Id
@@ -122,9 +155,10 @@ public class RecyclerDocumentRepository : IRecyclerDocumentRepository
             var doc = MapDocument(reader);
             var user = new User
             {
-                Id = (await reader.GetFieldValueAsync<Guid>(12, cancellationToken)),
-                FullName = reader.GetString(13),
-                Email = reader.GetString(14)
+                Id = (await reader.GetFieldValueAsync<Guid>(16, cancellationToken)),
+                FullName = reader.GetString(17),
+                Email = reader.GetString(18),
+                Role = reader.GetString(19)
             };
             result.Add((doc, user));
         }
@@ -182,11 +216,15 @@ public class RecyclerDocumentRepository : IRecyclerDocumentRepository
             FilePath = reader.GetString(4),
             FileType = reader.GetString(5),
             FileSize = reader.GetInt64(6),
-            Status = reader.GetString(7),
-            SubmittedAt = reader.GetDateTime(8),
-            ReviewedBy = reader.IsDBNull(9) ? null : reader.GetGuid(9),
-            ReviewedAt = reader.IsDBNull(10) ? null : reader.GetDateTime(10),
-            ReviewNote = reader.IsDBNull(11) ? null : reader.GetString(11)
+            BackFileName = reader.IsDBNull(7) ? null : reader.GetString(7),
+            BackFilePath = reader.IsDBNull(8) ? null : reader.GetString(8),
+            BackFileType = reader.IsDBNull(9) ? null : reader.GetString(9),
+            BackFileSize = reader.IsDBNull(10) ? 0 : reader.GetInt64(10),
+            Status = reader.GetString(11),
+            SubmittedAt = reader.GetDateTime(12),
+            ReviewedBy = reader.IsDBNull(13) ? null : reader.GetGuid(13),
+            ReviewedAt = reader.IsDBNull(14) ? null : reader.GetDateTime(14),
+            ReviewNote = reader.IsDBNull(15) ? null : reader.GetString(15)
         };
     }
 }

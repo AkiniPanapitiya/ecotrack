@@ -76,6 +76,19 @@ builder.Services.AddAuthentication(options =>
     };
     options.Events = new JwtBearerEvents
     {
+        OnMessageReceived = context =>
+        {
+            var token = context.Request.Query["access_token"].ToString();
+            if (string.IsNullOrEmpty(token))
+            {
+                token = context.Request.Query["token"].ToString();
+            }
+            if (!string.IsNullOrEmpty(token))
+            {
+                context.Token = token;
+            }
+            return Task.CompletedTask;
+        },
         OnTokenValidated = async context =>
         {
             var jti = context.Principal?.FindFirstValue(JwtRegisteredClaimNames.Jti);

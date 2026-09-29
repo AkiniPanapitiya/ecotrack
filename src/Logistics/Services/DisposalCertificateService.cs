@@ -40,13 +40,9 @@ public class DisposalCertificateService : IDisposalCertificateService
             return (false, 404, "Pickup item not found or not assigned to you.", null);
         }
 
-        // Check if item is already disposed via direct DB query
-        await using var connection = (MySqlConnector.MySqlConnection)await _connectionFactory.CreateConnectionAsync(cancellationToken);
-        await using var cmd = new MySqlConnector.MySqlCommand(
-            "SELECT Status FROM PickupItems WHERE Id = @Id", connection);
-        cmd.Parameters.AddWithValue("@Id", pickupItemId.ToString());
-        var status = await cmd.ExecuteScalarAsync(cancellationToken);
-        if (status?.ToString() == "Disposed")
+        // Check if item is already certified as disposed
+        var existingCert = await _certRepository.GetByPickupItemIdAsync(pickupItemId, cancellationToken);
+        if (existingCert != null)
         {
             return (false, 409, "This item has already been certified as disposed.", null);
         }
