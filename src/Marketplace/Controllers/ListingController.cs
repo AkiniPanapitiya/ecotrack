@@ -48,13 +48,15 @@ public class ListingController : ControllerBase
     [AllowAnonymous]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> BrowseListings(
+        [FromQuery] string? search = null,
         [FromQuery] string? keyword = null,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 10,
         CancellationToken cancellationToken = default)
     {
+        var searchTerm = !string.IsNullOrWhiteSpace(search) ? search : keyword;
         var (success, statusCode, message, listings, totalCount, returnedPage, returnedPageSize) =
-            await _listingService.BrowseListingsAsync(keyword, page, pageSize, cancellationToken);
+            await _listingService.BrowseListingsAsync(searchTerm, page, pageSize, cancellationToken);
 
         // Always returns successfully — empty list is valid
         return Ok(new

@@ -26,7 +26,14 @@ export const KycView = () => {
       setStatus(res.data.response);
       setMessage(res.data.message || '');
     } catch (err) {
-      setError('Failed to load KYC status. Please try again.');
+      if (err.response?.status === 401) {
+        setError('Your session has expired. Please log out from the top-right menu and log back in.');
+      } else if (err.response?.status === 403) {
+        setError('Access denied. Only recyclers can view or submit KYC documents.');
+      } else {
+        const msg = err.response?.data?.message || err.message || 'Failed to load KYC status. Please try again.';
+        setError(msg);
+      }
     } finally {
       setLoading(false);
     }
@@ -63,8 +70,14 @@ export const KycView = () => {
       // Reset file input
       if (fileInputRef.current) fileInputRef.current.value = '';
     } catch (err) {
-      const msg = err.response?.data?.message || 'Upload failed. Please try again.';
-      setError(msg);
+      if (err.response?.status === 401) {
+        setError('Your session has expired. Please log out and log in again.');
+      } else if (err.response?.status === 403) {
+        setError('Access denied. Only recyclers can upload KYC documents.');
+      } else {
+        const msg = err.response?.data?.message || err.response?.data?.title || 'Upload failed. Please try again.';
+        setError(msg);
+      }
     } finally {
       setUploading(false);
     }

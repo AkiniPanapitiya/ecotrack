@@ -113,13 +113,13 @@ public class ListingService : IListingService
     }
 
     public async Task<(bool Success, int StatusCode, string Message, List<ListingResponseDto> Listings, int TotalCount, int Page, int PageSize)> BrowseListingsAsync(
-        string? keyword, int page, int pageSize, CancellationToken cancellationToken = default)
+        string? search, int page, int pageSize, CancellationToken cancellationToken = default)
     {
         if (page < 1) page = 1;
         if (pageSize < 1) pageSize = 10;
         if (pageSize > 50) pageSize = 50;
 
-        var listings = await _listingRepository.BrowseAsync(keyword, page, pageSize, cancellationToken);
+        var listings = await _listingRepository.BrowseAsync(search, page, pageSize, cancellationToken);
         return (true, 200, "Listings retrieved.", listings, listings.Count, page, pageSize);
     }
 

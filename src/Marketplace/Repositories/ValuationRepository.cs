@@ -77,6 +77,23 @@ public class ValuationRepository : IValuationRepository
         return Convert.ToInt32(result) > 0;
     }
 
+    public async Task<bool> IsPickupItemOwnedByRecyclerAsync(
+        Guid pickupItemId, Guid recyclerId, CancellationToken cancellationToken = default)
+    {
+        await using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
+        const string sql = @"
+            SELECT COUNT(1)
+            FROM ecotrack_logistics_db.PickupItems pi
+            INNER JOIN ecotrack_logistics_db.PickupRequests pr ON pr.Id = pi.PickupRequestId
+            WHERE pi.Id = @PickupItemId AND pr.RecyclerId = @RecyclerId
+            LIMIT 1;";
+        await using var command = new MySqlCommand(sql, connection);
+        command.Parameters.AddWithValue("@PickupItemId", pickupItemId.ToString());
+        command.Parameters.AddWithValue("@RecyclerId", recyclerId.ToString());
+        var result = await command.ExecuteScalarAsync(cancellationToken);
+        return Convert.ToInt32(result) > 0;
+    }
+
     private static ValuationResponseDto MapValuation(MySqlDataReader reader)
     {
         var hasItemName = false;

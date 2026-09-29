@@ -590,10 +590,13 @@ function ValuationView() {
                       setError('');
                     }}
                     min="0"
-                    step="0.01"
+                    step="any"
                     disabled={submitting}
                     autoFocus
                   />
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.3rem' }}>
+                    Maximum allowed value: 999,999,999.99 LKR (max 2 decimal places)
+                  </div>
                   {error === 'Price is required.' && (
                     <div className="form-error">
                       <AlertCircle size={13} />

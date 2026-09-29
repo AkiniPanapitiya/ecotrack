@@ -217,22 +217,54 @@ export const KycAdminView = () => {
                       <><CheckCircle2 size={16} /> Verify</>
                     )}
                   </button>
-                  <button
-                    className="btn btn-danger"
-                    onClick={() => {
-                      setRejectNote((prev) => ({ ...prev, [sub.documentId]: prev[sub.documentId] || '' }));
-                      if (error) setError('');
-                    }}
-                    disabled={actionLoading === sub.documentId}
-                    title="Reject — a reason is required"
-                    style={{ backgroundColor: 'var(--danger)', color: '#fff', borderColor: 'var(--danger)' }}
-                  >
-                    {actionLoading === sub.documentId ? (
-                      <div className="spinner-small" />
-                    ) : (
-                      <><XCircle size={16} /> Reject</>
-                    )}
-                  </button>
+                  {rejectNote[sub.documentId] !== undefined ? (
+                    // Confirm/Cancel row when reject note textarea is open
+                    <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
+                      <button
+                        className="btn btn-danger"
+                        onClick={() => handleAction(sub.documentId, 'reject')}
+                        disabled={actionLoading === sub.documentId || !rejectNote[sub.documentId].trim()}
+                        title="Confirm rejection"
+                        style={{ backgroundColor: 'var(--danger)', color: '#fff', borderColor: 'var(--danger)' }}
+                      >
+                        {actionLoading === sub.documentId ? (
+                          <div className="spinner-small" />
+                        ) : (
+                          <><CheckCircle2 size={16} /> Confirm Reject</>
+                        )}
+                      </button>
+                      <button
+                        className="btn btn-secondary"
+                        onClick={() => {
+                          const newNotes = { ...rejectNote };
+                          delete newNotes[sub.documentId];
+                          setRejectNote(newNotes);
+                          if (error) setError('');
+                        }}
+                        disabled={actionLoading === sub.documentId}
+                        title="Cancel rejection"
+                      >
+                        <><ArrowLeft size={16} /> Cancel</>
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      className="btn btn-danger"
+                      onClick={() => {
+                        setRejectNote((prev) => ({ ...prev, [sub.documentId]: prev[sub.documentId] || '' }));
+                        if (error) setError('');
+                      }}
+                      disabled={actionLoading === sub.documentId}
+                      title="Reject — a reason is required"
+                      style={{ backgroundColor: 'var(--danger)', color: '#fff', borderColor: 'var(--danger)' }}
+                    >
+                      {actionLoading === sub.documentId ? (
+                        <div className="spinner-small" />
+                      ) : (
+                        <><XCircle size={16} /> Reject</>
+                      )}
+                    </button>
+                  )}
                 </div>
               </div>
             ))}
@@ -245,7 +277,7 @@ export const KycAdminView = () => {
         <strong style={{ color: 'var(--text-primary)', display: 'block', marginBottom: '0.3rem' }}>How it works:</strong>
         <ul style={{ paddingLeft: '1.2rem', margin: 0 }}>
           <li>Click <strong>Verify</strong> to approve a submission as-is.</li>
-          <li>Click <strong>Reject</strong> to open the reason box, type why it was rejected, then confirm. A rejection note is required.</li>
+          <li>Click <strong>Reject</strong> to open the reason box, type why it was rejected, then click <strong>Confirm Reject</strong> to submit.</li>
           <li>When rejected, the recycler sees the note and can re-upload a new document.</li>
         </ul>
       </div>

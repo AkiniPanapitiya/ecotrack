@@ -62,7 +62,8 @@ public class RecyclerKycService : IRecyclerKycService
             return (false, 403, "Only recyclers can upload KYC documents.", null);
         }
 
-        // 2. Check if already has a document submitted
+        // 2. Check if already has a document under review or approved
+        //    (Rejected documents allow re-upload)
         if (await _documentRepository.HasDocumentAsync(userId, cancellationToken))
         {
             return (false, 409, "You have already submitted a KYC document. Please wait for review.", null);
