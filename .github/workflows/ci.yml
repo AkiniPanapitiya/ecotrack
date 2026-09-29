@@ -2,9 +2,9 @@ name: EcoTrack CI Pipeline
 
 on:
   push:
-    branches: [ "Dev" ]
+    branches: [ "Dev", "Deploy", "deploy", "main" ]
   pull_request:
-    branches: [ "Dev" ]
+    branches: [ "Dev", "Deploy", "deploy", "main" ]
 
 permissions:
   contents: read
