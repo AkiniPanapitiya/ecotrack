@@ -65,12 +65,13 @@ public class RecyclerKycServiceTests
         _documentRepositoryMock.Setup(r => r.HasDocumentAsync(userId, _ct))
             .ReturnsAsync(false);
         _documentRepositoryMock.Setup(r => r.CreateDocumentAsync(
-                userId, "ID", "id_card.pdf", "", "application/pdf", 1024, _ct))
+                userId, "ID", "id_card.pdf", "", "application/pdf", 1024,
+                null, null, null, 0, _ct))
             .ReturnsAsync(CreatePendingDocument(userId, "ID", "id_card.pdf"));
 
         // Act
         var (success, statusCode, message, response) = await _service.UploadDocumentAsync(
-            userId, dto, null, _ct);
+            userId, dto, null, null, _ct);
 
         // Assert
         Assert.True(success);
@@ -82,7 +83,8 @@ public class RecyclerKycServiceTests
         Assert.Equal("id_card.pdf", response.FileName);
 
         _documentRepositoryMock.Verify(r => r.CreateDocumentAsync(
-            userId, "ID", "id_card.pdf", "", "application/pdf", 1024, _ct), Times.Once);
+            userId, "ID", "id_card.pdf", "", "application/pdf", 1024,
+            null, null, null, 0, _ct), Times.Once);
         _auditRepositoryMock.Verify(r => r.LogActivityAsync(It.IsAny<UserAuditLog>(), _ct), Times.Once);
     }
 
@@ -114,7 +116,7 @@ public class RecyclerKycServiceTests
 
         // Act
         var (success, statusCode, message, response) = await _service.UploadDocumentAsync(
-            userId, dto, null, _ct);
+            userId, dto, null, null, _ct);
 
         // Assert
         Assert.False(success);
@@ -123,7 +125,8 @@ public class RecyclerKycServiceTests
         Assert.Null(response);
         _documentRepositoryMock.Verify(r => r.CreateDocumentAsync(
             It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(),
-            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<long>(), It.IsAny<CancellationToken>()), Times.Never);
+            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<long>(),
+            It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<long>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     // ------------------------------------------------------------------
@@ -150,7 +153,7 @@ public class RecyclerKycServiceTests
 
         // Act
         var (success, statusCode, message, response) = await _service.UploadDocumentAsync(
-            userId, dto, null, _ct);
+            userId, dto, null, null, _ct);
 
         // Assert
         Assert.False(success);
@@ -185,7 +188,7 @@ public class RecyclerKycServiceTests
 
         // Act
         var (success, statusCode, message, response) = await _service.UploadDocumentAsync(
-            userId, dto, null, _ct);
+            userId, dto, null, null, _ct);
 
         // Assert
         Assert.False(success);
@@ -194,7 +197,8 @@ public class RecyclerKycServiceTests
         Assert.Null(response);
         _documentRepositoryMock.Verify(r => r.CreateDocumentAsync(
             It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(),
-            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<long>(), It.IsAny<CancellationToken>()), Times.Never);
+            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<long>(),
+            It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<long>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     // ------------------------------------------------------------------
@@ -221,7 +225,7 @@ public class RecyclerKycServiceTests
 
         // Act
         var (success, statusCode, message, response) = await _service.UploadDocumentAsync(
-            userId, dto, null, _ct);
+            userId, dto, null, null, _ct);
 
         // Assert
         Assert.False(success);
@@ -230,7 +234,8 @@ public class RecyclerKycServiceTests
         Assert.Null(response);
         _documentRepositoryMock.Verify(r => r.CreateDocumentAsync(
             It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(),
-            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<long>(), It.IsAny<CancellationToken>()), Times.Never);
+            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<long>(),
+            It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<long>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     // ------------------------------------------------------------------
@@ -255,12 +260,13 @@ public class RecyclerKycServiceTests
         _documentRepositoryMock.Setup(r => r.HasDocumentAsync(userId, _ct))
             .ReturnsAsync(false);
         _documentRepositoryMock.Setup(r => r.CreateDocumentAsync(
-                userId, "ID", "new_id.pdf", "", "application/pdf", 1024, _ct))
+                userId, "ID", "new_id.pdf", "", "application/pdf", 1024,
+                null, null, null, 0, _ct))
             .ReturnsAsync(CreatePendingDocument(userId, "ID", "new_id.pdf"));
 
         // Act
         var (success, statusCode, message, response) = await _service.UploadDocumentAsync(
-            userId, dto, null, _ct);
+            userId, dto, null, null, _ct);
 
         // Assert
         Assert.True(success);
@@ -271,7 +277,8 @@ public class RecyclerKycServiceTests
         Assert.Equal("new_id.pdf", response.FileName);
 
         _documentRepositoryMock.Verify(r => r.CreateDocumentAsync(
-            userId, "ID", "new_id.pdf", "", "application/pdf", 1024, _ct), Times.Once);
+            userId, "ID", "new_id.pdf", "", "application/pdf", 1024,
+            null, null, null, 0, _ct), Times.Once);
         _auditRepositoryMock.Verify(r => r.LogActivityAsync(
             It.Is<UserAuditLog>(a => a.Action == "KYC_DOCUMENT_UPLOADED" && a.UserId == userId), _ct), Times.Once);
     }
@@ -496,6 +503,7 @@ public class RecyclerKycServiceTests
         Assert.Equal("No KYC document submitted yet.", message);
         Assert.NotNull(response);
         Assert.False(response.HasSubmittedDocument);
+        Assert.Equal("Not Submitted", response.Status);
         Assert.Null(response.DocumentId);
     }
 
@@ -532,6 +540,46 @@ public class RecyclerKycServiceTests
         Assert.True(response.HasSubmittedDocument);
         Assert.Equal("Pending", response.Status);
         Assert.Equal("ID", response.DocumentType);
+    }
+
+    // ------------------------------------------------------------------
+    // 11. Get document — authorization & file check
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public async Task GetDocumentAsync_NotFound_Returns404()
+    {
+        var docId = Guid.NewGuid();
+        _documentRepositoryMock.Setup(r => r.GetByIdAsync(docId, _ct))
+            .ReturnsAsync((RecyclerDocument?)null);
+
+        var (success, statusCode, message, document) = await _service.GetDocumentAsync(
+            docId, Guid.NewGuid(), "Admin", _ct);
+
+        Assert.False(success);
+        Assert.Equal(404, statusCode);
+        Assert.Equal("Document not found.", message);
+    }
+
+    [Fact]
+    public async Task GetDocumentAsync_NonAdminAndNotOwner_Returns403()
+    {
+        var docId = Guid.NewGuid();
+        var ownerId = Guid.NewGuid();
+        var otherRecyclerId = Guid.NewGuid();
+        var doc = new RecyclerDocument
+        {
+            Id = docId, RecyclerId = ownerId, FilePath = "some/path.pdf"
+        };
+        _documentRepositoryMock.Setup(r => r.GetByIdAsync(docId, _ct))
+            .ReturnsAsync(doc);
+
+        var (success, statusCode, message, document) = await _service.GetDocumentAsync(
+            docId, otherRecyclerId, "Recycler", _ct);
+
+        Assert.False(success);
+        Assert.Equal(403, statusCode);
+        Assert.Equal("You are not authorized to view this document.", message);
     }
 
     // ------------------------------------------------------------------

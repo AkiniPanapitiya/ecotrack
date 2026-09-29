@@ -26,8 +26,9 @@ public class DisposalCertificateRepository : IDisposalCertificateRepository
         {
             // Check item exists and is not already certified
             const string checkSql = @"
-                SELECT pi.Id, pi.ItemName, pi.Quantity, pi.ItemCondition, pi.Status
+                SELECT pi.Id, pi.ItemName, pi.Quantity, pi.ItemCondition, pi.Status, pr.UserId
                 FROM PickupItems pi
+                INNER JOIN PickupRequests pr ON pr.Id = pi.PickupRequestId
                 WHERE pi.Id = @PickupItemId;";
 
             await using var checkCmd = new MySqlCommand(checkSql, connection, transaction);
@@ -43,7 +44,8 @@ public class DisposalCertificateRepository : IDisposalCertificateRepository
             var itemName = reader.GetString(1);
             var quantity = reader.GetInt32(2);
             var itemCondition = reader.GetString(3);
-            reader.Close();
+            var userId = Guid.Parse(reader.GetString(5));
+            await reader.CloseAsync();
 
             if (existingStatus == "Disposed")
             {
@@ -99,7 +101,8 @@ public class DisposalCertificateRepository : IDisposalCertificateRepository
                 CreatedAt = disposedAt,
                 ItemName = itemName,
                 Quantity = quantity,
-                ItemCondition = itemCondition
+                ItemCondition = itemCondition,
+                UserId = userId
             });
         }
         catch
@@ -144,7 +147,8 @@ public class DisposalCertificateRepository : IDisposalCertificateRepository
             CreatedAt = reader.GetDateTime(6),
             ItemName = reader.GetString(7),
             Quantity = reader.GetInt32(8),
-            ItemCondition = reader.GetString(9)
+            ItemCondition = reader.GetString(9),
+            UserId = Guid.Parse(reader.GetString(10))
         };
     }
 }

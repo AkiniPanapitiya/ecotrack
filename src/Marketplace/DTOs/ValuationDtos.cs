@@ -26,4 +26,7 @@ public class ValuationResponseDto
     public DateTime UpdatedAt { get; set; }
     public string ItemName { get; set; } = string.Empty;
     public int Quantity { get; set; }
+    public Guid? ListingId { get; set; }
+    public string? ListingStatus { get; set; }
+    public bool IsListed => ListingId.HasValue && !string.IsNullOrEmpty(ListingStatus);
 }

@@ -15,6 +15,7 @@ function MarketplaceView() {
   const [searchInput, setSearchInput] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
   const [selectedListing, setSelectedListing] = useState(null);
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [orderError, setOrderError] = useState('');
@@ -99,11 +100,12 @@ function MarketplaceView() {
         const errData = await res.json().catch(() => ({}));
         throw new Error(errData.message || 'Failed to place order.');
       }
+      const title = selectedListing?.title || 'Item';
       setShowOrderModal(false);
-      setSelectedListing(prev => ({ ...prev, status: 'Reserved' }));
-      // Show a brief success toast-like message
+      setSelectedListing(null);
       setOrderError('');
-      // Reload listings to reflect status change
+      setSuccessMessage(`Order for "${title}" placed successfully! You can view it in My Orders.`);
+      setTimeout(() => setSuccessMessage(''), 5000);
       loadListings();
     } catch (err) {
       setOrderError(err.message || 'Failed to place order. Please try again.');
@@ -215,6 +217,23 @@ function MarketplaceView() {
           )}
         </div>
       </div>
+
+      {/* Success Notification */}
+      {successMessage && (
+        <div className="alert alert-success" style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <CheckCircle2 size={16} />
+            <span>{successMessage}</span>
+          </div>
+          <button
+            type="button"
+            style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+            onClick={() => setSuccessMessage('')}
+          >
+            <XIcon size={14} />
+          </button>
+        </div>
+      )}
 
       {/* Error */}
       {error && (
@@ -532,7 +551,7 @@ function MarketplaceView() {
                 {placingOrder ? (
                   <><Loader2 size={16} className="spin" style={{ marginRight: '0.4rem' }} />Processing...</>
                 ) : (
-                  <><ShoppingCart size={16} className="spin" style={{ marginRight: '0.4rem' }} />Place Order</>
+                  <><ShoppingCart size={16} style={{ marginRight: '0.4rem' }} />Place Order</>
                 )}
               </button>
             </div>

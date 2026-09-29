@@ -40,6 +40,25 @@ export const DisposalCertificationView = () => {
   }, [searchParams]);
 
   useEffect(() => {
+    if (isUser && itemId) {
+      setLoading(true);
+      setError('');
+      disposalApi.getCertificate(itemId)
+        .then((res) => {
+          const cert = res.data?.certificate || res.data;
+          setCertData(cert ? [cert] : []);
+        })
+        .catch((err) => {
+          setError(err.response?.data?.message || 'Could not load certification.');
+          setCertData(null);
+        })
+        .finally(() => {
+          setLoading(false);
+        });
+    }
+  }, [isUser, itemId]);
+
+  useEffect(() => {
     if (isRecycler && user?.userId) {
       logisticsApi.getRecyclerSchedule(user.userId)
         .then((res) => {
@@ -333,7 +352,20 @@ This certifies that the above item was properly disposed of.
           </p>
         </div>
 
-        {!certData && (
+        {loading && (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem' }}>
+            <Loader2 size={36} className="spin" style={{ color: 'var(--primary)' }} />
+          </div>
+        )}
+
+        {error && (
+          <div className="alert alert-danger" style={{ marginBottom: '1.5rem' }}>
+            <AlertCircle size={18} />
+            <span>{error}</span>
+          </div>
+        )}
+
+        {!loading && !error && (!certData || certData.length === 0) && (
           <div className="glass-card" style={{ textAlign: 'center', padding: '4rem 2rem' }}>
             <CheckCircle2 size={48} style={{ color: 'var(--text-secondary)', marginBottom: '1rem' }} />
             <p style={{ color: 'var(--text-secondary)', fontSize: '1rem', margin: 0 }}>No disposal certifications yet.</p>

@@ -39,6 +39,10 @@ public class OrderService : IOrderService
         {
             return (false, 409, "This item is no longer available.", null);
         }
+        catch (MySqlConnector.MySqlException ex) when (ex.Number == 1062)
+        {
+            return (false, 409, "This item has already been ordered.", null);
+        }
         catch
         {
             return (false, 500, "Failed to place order. Please try again.", null);

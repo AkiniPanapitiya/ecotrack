@@ -18,9 +18,13 @@ public class ValuationRepository : IValuationRepository
     {
         await using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
         const string sql = @"
-            SELECT Id, PickupItemId, RecyclerId, Price, `Condition`, CreatedAt, UpdatedAt
-            FROM ItemValuations
-            WHERE PickupItemId = @PickupItemId
+            SELECT v.Id, v.PickupItemId, v.RecyclerId, v.Price, v.`Condition`, v.CreatedAt, v.UpdatedAt,
+                   pi.ItemName, pi.Quantity,
+                   l.Id AS ListingId, l.Status AS ListingStatus
+            FROM ItemValuations v
+            LEFT JOIN ecotrack_logistics_db.PickupItems pi ON pi.Id = v.PickupItemId
+            LEFT JOIN Listings l ON l.ValuationId = v.Id AND l.IsDeleted = 0
+            WHERE v.PickupItemId = @PickupItemId
             LIMIT 1;";
         await using var command = new MySqlCommand(sql, connection);
         command.Parameters.AddWithValue("@PickupItemId", pickupItemId.ToString());
@@ -98,10 +102,27 @@ public class ValuationRepository : IValuationRepository
     {
         var hasItemName = false;
         var hasQuantity = false;
+        var hasListingId = false;
+        var hasListingStatus = false;
         for (var i = 0; i < reader.FieldCount; i++)
         {
             if (reader.GetName(i).Equals("ItemName", StringComparison.OrdinalIgnoreCase)) hasItemName = true;
             if (reader.GetName(i).Equals("Quantity", StringComparison.OrdinalIgnoreCase)) hasQuantity = true;
+            if (reader.GetName(i).Equals("ListingId", StringComparison.OrdinalIgnoreCase)) hasListingId = true;
+            if (reader.GetName(i).Equals("ListingStatus", StringComparison.OrdinalIgnoreCase)) hasListingStatus = true;
+        }
+
+        Guid? listingId = null;
+        if (hasListingId && !reader.IsDBNull(reader.GetOrdinal("ListingId")))
+        {
+            var str = reader.GetString("ListingId");
+            if (Guid.TryParse(str, out var g)) listingId = g;
+        }
+
+        string? listingStatus = null;
+        if (hasListingStatus && !reader.IsDBNull(reader.GetOrdinal("ListingStatus")))
+        {
+            listingStatus = reader.GetString("ListingStatus");
         }
 
         return new ValuationResponseDto
@@ -114,7 +135,9 @@ public class ValuationRepository : IValuationRepository
             CreatedAt = reader.GetDateTime("CreatedAt"),
             UpdatedAt = reader.GetDateTime("UpdatedAt"),
             ItemName = hasItemName && !reader.IsDBNull(reader.GetOrdinal("ItemName")) ? reader.GetString("ItemName") : string.Empty,
-            Quantity = hasQuantity && !reader.IsDBNull(reader.GetOrdinal("Quantity")) ? reader.GetInt32(reader.GetOrdinal("Quantity")) : 0
+            Quantity = hasQuantity && !reader.IsDBNull(reader.GetOrdinal("Quantity")) ? reader.GetInt32(reader.GetOrdinal("Quantity")) : 0,
+            ListingId = listingId,
+            ListingStatus = listingStatus
         };
     }
 
@@ -123,9 +146,11 @@ public class ValuationRepository : IValuationRepository
         await using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
         const string sql = @"
             SELECT v.Id, v.PickupItemId, v.RecyclerId, v.Price, v.`Condition`, v.CreatedAt, v.UpdatedAt,
-                   pi.ItemName, pi.Quantity
+                   pi.ItemName, pi.Quantity,
+                   l.Id AS ListingId, l.Status AS ListingStatus
             FROM ItemValuations v
             LEFT JOIN ecotrack_logistics_db.PickupItems pi ON pi.Id = v.PickupItemId
+            LEFT JOIN Listings l ON l.ValuationId = v.Id AND l.IsDeleted = 0
             WHERE v.RecyclerId = @RecyclerId
             ORDER BY v.CreatedAt DESC;";
         await using var command = new MySqlCommand(sql, connection);

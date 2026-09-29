@@ -56,7 +56,7 @@ export const App = () => {
                   <Route path="/marketplace" element={<MarketplaceView />} />
                   <Route path="/create-listing" element={<ProtectedRoute rolesAllowed={['Recycler']}><CreateListingView /></ProtectedRoute>} />
                   <Route path="/my-orders" element={<ProtectedRoute rolesAllowed={['User']}><MyOrdersView /></ProtectedRoute>} />
-                  <Route path="/disposal-certification" element={<ProtectedRoute rolesAllowed={['Recycler']}><DisposalCertificationView /></ProtectedRoute>} />
+                  <Route path="/disposal-certification" element={<ProtectedRoute rolesAllowed={['Recycler', 'User']}><DisposalCertificationView /></ProtectedRoute>} />
                   <Route path="/" element={<HomeRedirect />} />
             </Routes>
           </main>

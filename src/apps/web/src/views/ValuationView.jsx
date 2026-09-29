@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { valuationApi } from '../services/valuationApi';
 import { logisticsApi } from '../services/api';
-import { PackageSearch, Edit3, CheckCircle2, XCircle, Loader2, Tag, AlertCircle, Loader, Copy, Check, Recycle } from 'lucide-react';
+import { PackageSearch, Edit3, CheckCircle2, XCircle, Loader2, Tag, AlertCircle, Loader, Copy, Check, Recycle, ShoppingBag } from 'lucide-react';
 import { copyTextToClipboard } from '../utils/clipboard';
 
 const CONDITIONS = ['Good', 'Fair', 'Poor'];
@@ -127,6 +127,10 @@ function ValuationView() {
             newMap[item.id] = {
               price: res.data.valuation.price,
               condition: res.data.valuation.condition,
+              valuationId: res.data.valuation.id,
+              listingId: res.data.valuation.listingId,
+              listingStatus: res.data.valuation.listingStatus,
+              isListed: res.data.valuation.isListed,
             };
           } else {
             delete newMap[item.id];
@@ -520,6 +524,53 @@ function ValuationView() {
                             <Recycle size={11} />
                             Certify
                           </Link>
+                          {valuationMap[item.id] && (
+                            valuationMap[item.id].isListed ? (
+                              <Link
+                                to="/marketplace"
+                                onClick={(e) => e.stopPropagation()}
+                                style={{
+                                  background: 'rgba(16, 185, 129, 0.12)',
+                                  border: '1px solid rgba(16, 185, 129, 0.3)',
+                                  borderRadius: '4px',
+                                  color: '#34d399',
+                                  cursor: 'pointer',
+                                  padding: '1px 6px',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '3px',
+                                  fontSize: '0.7rem',
+                                  textDecoration: 'none',
+                                }}
+                                title={`Already listed on Marketplace (${valuationMap[item.id].listingStatus || 'Listed'}). Click to view in Marketplace.`}
+                              >
+                                <ShoppingBag size={11} />
+                                Listed ({valuationMap[item.id].listingStatus || 'Active'})
+                              </Link>
+                            ) : (
+                              <Link
+                                to={`/create-listing?itemId=${item.id}${valuationMap[item.id]?.valuationId ? `&valuationId=${valuationMap[item.id].valuationId}` : ''}`}
+                                onClick={(e) => e.stopPropagation()}
+                                style={{
+                                  background: 'rgba(59, 130, 246, 0.12)',
+                                  border: '1px solid rgba(59, 130, 246, 0.3)',
+                                  borderRadius: '4px',
+                                  color: '#60a5fa',
+                                  cursor: 'pointer',
+                                  padding: '1px 6px',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '3px',
+                                  fontSize: '0.7rem',
+                                  textDecoration: 'none',
+                                }}
+                                title="Create marketplace listing for this valued item"
+                              >
+                                <ShoppingBag size={11} />
+                                List
+                              </Link>
+                            )
+                          )}
                         </div>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>

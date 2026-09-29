@@ -10,6 +10,10 @@ public class RecyclerDocument
     public string FilePath { get; set; } = string.Empty;
     public string FileType { get; set; } = string.Empty; // mime type e.g. "image/jpeg"
     public long FileSize { get; set; } // bytes
+    public string? BackFileName { get; set; }
+    public string? BackFilePath { get; set; }
+    public string? BackFileType { get; set; }
+    public long BackFileSize { get; set; }
     public string Status { get; set; } = "Pending"; // "Pending", "Verified", "Rejected"
     public DateTime SubmittedAt { get; set; } = DateTime.UtcNow;
     public Guid? ReviewedBy { get; set; }

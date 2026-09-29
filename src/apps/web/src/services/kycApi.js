@@ -18,10 +18,13 @@ api.interceptors.request.use((config) => {
 });
 
 // POST /kyc/upload — upload KYC document (multipart form)
-export const uploadDocument = (documentType, file) => {
+export const uploadDocument = (documentType, file, backFile = null) => {
   const formData = new FormData();
   formData.append('DocumentType', documentType);
   formData.append('File', file);
+  if (backFile) {
+    formData.append('BackFile', backFile);
+  }
   return api.post('/kyc/upload', formData);
 };
 
@@ -34,6 +37,17 @@ export const getPendingSubmissions = () => api.get('/kyc/pending');
 // PUT /kyc/review/:documentId — admin: verify or reject
 export const reviewDocument = (documentId, status, reviewNote) =>
   api.put(`/kyc/review/${documentId}`, { status, reviewNote });
+
+// GET /kyc/document/:documentId — get document blob for preview or download (supports ?side=front or ?side=back)
+export const getDocumentBlob = (documentId, side = 'front') =>
+  api.get(`/kyc/document/${documentId}?side=${side}`, { responseType: 'blob' });
+
+// Helper to get direct preview URL with token query parameter
+export const getDocumentUrl = (documentId) => {
+  const token = localStorage.getItem('ecotrack_token');
+  const base = import.meta.env.VITE_IDENTITY_API_URL || 'http://localhost:5001/api';
+  return `${base}/kyc/document/${documentId}${token ? `?token=${encodeURIComponent(token)}` : ''}`;
+};
 
 // GET /admin/users — admin: list all users with roles (Story 8)
 export const getUsers = (params) => api.get('/admin/users', { params });
