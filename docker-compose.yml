@@ -137,19 +137,18 @@ services:
     volumes:
       - kafka-data:/var/lib/kafka/data
     healthcheck:
-      test: ["CMD", "kafka-topics.sh", "--bootstrap-server", "localhost:9092", "--list"]
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 30s
+      start_period: 15s
 
   # Kafka Topic Provisioner (Sprint 3 Topics & DLQs)
   kafka-init:
     image: apache/kafka:3.8.0
     container_name: ecotrack-kafka-init
     depends_on:
-      kafka:
-        condition: service_healthy
+      - kafka
     networks:
       - ecotrack-network
     volumes:
