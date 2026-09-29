@@ -198,6 +198,85 @@ public class RecyclerKycServiceTests
     }
 
     // ------------------------------------------------------------------
+    // 4b. Re-upload blocked if active document already exists (ECO-18)
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public async Task UploadDocumentAsync_AlreadyHasActiveDocument_Returns409Conflict()
+    {
+        // Arrange: document already pending or verified
+        var userId = Guid.NewGuid();
+        var user = new User { Id = userId, Email = "recycler@test.com", Role = "Recycler" };
+        var fileMock = MakeFile("id.pdf", "application/pdf", 1024);
+        var dto = new UploadDocumentRequestDto
+        {
+            DocumentType = "ID",
+            File = fileMock.Object
+        };
+
+        _userRepositoryMock.Setup(r => r.GetByIdAsync(userId, _ct))
+            .ReturnsAsync(user);
+        _documentRepositoryMock.Setup(r => r.HasDocumentAsync(userId, _ct))
+            .ReturnsAsync(true);
+
+        // Act
+        var (success, statusCode, message, response) = await _service.UploadDocumentAsync(
+            userId, dto, null, _ct);
+
+        // Assert
+        Assert.False(success);
+        Assert.Equal(409, statusCode);
+        Assert.Equal("You have already submitted a KYC document. Please wait for review.", message);
+        Assert.Null(response);
+        _documentRepositoryMock.Verify(r => r.CreateDocumentAsync(
+            It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(),
+            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<long>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    // ------------------------------------------------------------------
+    // 4c. Re-upload allowed after previous document rejected (ECO-18 / TC-18-06)
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public async Task UploadDocumentAsync_AfterRejection_AllowsNewUploadAndReturns201()
+    {
+        // Arrange: previous document was rejected, so HasDocumentAsync returns false
+        var userId = Guid.NewGuid();
+        var user = new User { Id = userId, Email = "recycler@test.com", Role = "Recycler" };
+        var fileMock = MakeFile("new_id.pdf", "application/pdf", 1024);
+        var dto = new UploadDocumentRequestDto
+        {
+            DocumentType = "ID",
+            File = fileMock.Object
+        };
+
+        _userRepositoryMock.Setup(r => r.GetByIdAsync(userId, _ct))
+            .ReturnsAsync(user);
+        _documentRepositoryMock.Setup(r => r.HasDocumentAsync(userId, _ct))
+            .ReturnsAsync(false);
+        _documentRepositoryMock.Setup(r => r.CreateDocumentAsync(
+                userId, "ID", "new_id.pdf", "", "application/pdf", 1024, _ct))
+            .ReturnsAsync(CreatePendingDocument(userId, "ID", "new_id.pdf"));
+
+        // Act
+        var (success, statusCode, message, response) = await _service.UploadDocumentAsync(
+            userId, dto, null, _ct);
+
+        // Assert
+        Assert.True(success);
+        Assert.Equal(201, statusCode);
+        Assert.Equal("Document submitted for review.", message);
+        Assert.NotNull(response);
+        Assert.Equal("Pending", response.Status);
+        Assert.Equal("new_id.pdf", response.FileName);
+
+        _documentRepositoryMock.Verify(r => r.CreateDocumentAsync(
+            userId, "ID", "new_id.pdf", "", "application/pdf", 1024, _ct), Times.Once);
+        _auditRepositoryMock.Verify(r => r.LogActivityAsync(
+            It.Is<UserAuditLog>(a => a.Action == "KYC_DOCUMENT_UPLOADED" && a.UserId == userId), _ct), Times.Once);
+    }
+
+    // ------------------------------------------------------------------
     // 5. Admin verify updates status
     // ------------------------------------------------------------------
 

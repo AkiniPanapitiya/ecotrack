@@ -160,7 +160,11 @@ public class RecyclerDocumentRepository : IRecyclerDocumentRepository
     public async Task<bool> HasDocumentAsync(Guid recyclerId, CancellationToken cancellationToken = default)
     {
         await using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
-        const string sql = "SELECT COUNT(1) FROM RecyclerDocuments WHERE RecyclerId = @RecyclerId;";
+        // Only block re-upload if there's a document still under review (Pending)
+        // or already approved (Verified). Rejected documents allow re-upload.
+        const string sql = @"SELECT COUNT(1) FROM RecyclerDocuments
+                             WHERE RecyclerId = @RecyclerId
+                             AND Status IN ('Pending', 'Verified');";
         await using var command = new MySqlCommand(sql, connection);
         command.Parameters.AddWithValue("@RecyclerId", recyclerId.ToString());
         var count = (long)(await command.ExecuteScalarAsync(cancellationToken)!);

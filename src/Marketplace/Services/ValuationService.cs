@@ -28,10 +28,25 @@ public class ValuationService : IValuationService
         if (!ValidConditions.Contains(dto.Condition))
             return (false, 400, "Condition must be Good, Fair, or Poor.", null);
 
+        // Validation: price must not exceed maximum allowed value
+        if (dto.Price > 999999999.99m)
+            return (false, 400, "Price exceeds the maximum allowed value.", null);
+
+        // Validation: price must have at most 2 decimal places
+        var priceRounded = Math.Round(dto.Price, 2, MidpointRounding.AwayFromZero);
+        if (priceRounded != dto.Price)
+            return (false, 400, "Price can have at most 2 decimal places.", null);
+
         // Check if pickup item exists
         var itemExists = await _valuationRepository.PickupItemExistsAsync(pickupItemId, cancellationToken);
         if (!itemExists)
             return (false, 404, "Pickup item not found.", null);
+
+        // Ownership check: only the recycler who owns the pickup item can value it
+        var recyclerGuid = Guid.Parse(recyclerId);
+        var isOwner = await _valuationRepository.IsPickupItemOwnedByRecyclerAsync(pickupItemId, recyclerGuid, cancellationToken);
+        if (!isOwner)
+            return (false, 403, "You can only value items from your own pickup requests.", null);
 
         // Check if valuation already exists for this item
         var existing = await _valuationRepository.GetByPickupItemIdAsync(pickupItemId, cancellationToken);
@@ -70,6 +85,15 @@ public class ValuationService : IValuationService
         // Validation: condition must be valid
         if (!ValidConditions.Contains(dto.Condition))
             return (false, 400, "Condition must be Good, Fair, or Poor.", null);
+
+        // Validation: price must not exceed maximum allowed value
+        if (dto.Price > 999999999.99m)
+            return (false, 400, "Price exceeds the maximum allowed value.", null);
+
+        // Validation: price must have at most 2 decimal places
+        var priceRounded = Math.Round(dto.Price, 2, MidpointRounding.AwayFromZero);
+        if (priceRounded != dto.Price)
+            return (false, 400, "Price can have at most 2 decimal places.", null);
 
         // Find existing valuation
         var existing = await _valuationRepository.GetByPickupItemIdAsync(pickupItemId, cancellationToken);

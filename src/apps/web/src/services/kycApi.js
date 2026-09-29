@@ -5,11 +5,14 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
-// Attach token from localStorage
+// Attach token from localStorage & handle FormData
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('ecotrack_token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
+  }
+  if (config.data instanceof FormData) {
+    delete config.headers['Content-Type'];
   }
   return config;
 });
@@ -19,9 +22,7 @@ export const uploadDocument = (documentType, file) => {
   const formData = new FormData();
   formData.append('DocumentType', documentType);
   formData.append('File', file);
-  return api.post('/kyc/upload', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  });
+  return api.post('/kyc/upload', formData);
 };
 
 // GET /kyc/my-status — get recycler's own verification status
