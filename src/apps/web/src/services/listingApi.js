@@ -23,7 +23,10 @@ class ListingApiService {
 
   async browse(keyword = '', page = 1, pageSize = 12, token = null) {
     const params = new URLSearchParams();
-    if (keyword.trim()) params.set('keyword', keyword.trim());
+    if (keyword.trim()) {
+      params.set('search', keyword.trim());
+      params.set('keyword', keyword.trim());
+    }
     params.set('page', page);
     params.set('pageSize', pageSize);
     return this._request(`?${params.toString()}`, {

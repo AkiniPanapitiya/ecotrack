@@ -61,16 +61,16 @@ public class ListingRepository : IListingRepository
     }
 
     public async Task<List<ListingResponseDto>> BrowseAsync(
-        string? keyword, int page, int pageSize, CancellationToken cancellationToken = default)
+        string? search, int page, int pageSize, CancellationToken cancellationToken = default)
     {
         await using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
         var conditions = new List<string> { "l.Status = 'Available'", "l.IsDeleted = 0" };
         var parameters = new List<MySqlParameter>();
 
-        if (!string.IsNullOrWhiteSpace(keyword))
+        if (!string.IsNullOrWhiteSpace(search))
         {
             conditions.Add("(l.Title LIKE @Keyword OR l.Description LIKE @Keyword)");
-            parameters.Add(new MySqlParameter("@Keyword", $"%{keyword}%"));
+            parameters.Add(new MySqlParameter("@Keyword", $"%{search}%"));
         }
 
         var whereClause = string.Join(" AND ", conditions);

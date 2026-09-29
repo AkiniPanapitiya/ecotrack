@@ -6,12 +6,14 @@ const PAGE_SIZE = 12;
 
 function MarketplaceView() {
   const { user, token } = useAuth();
-  const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [listings, setListings] = useState([]);
   const [totalCount, setTotalCount] = useState(0);
   const [page, setPage] = useState(1);
   const [pageSize] = useState(PAGE_SIZE);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchInput, setSearchInput] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [error, setError] = useState('');
   const [selectedListing, setSelectedListing] = useState(null);
   const [showOrderModal, setShowOrderModal] = useState(false);
@@ -20,24 +22,47 @@ function MarketplaceView() {
 
   const authToken = token || localStorage.getItem('ecotrack_token');
 
-  // Reset to page 1 when search changes
-  const handleSearch = (value) => {
-    setSearchTerm(value);
+  // Debounce search input changes by 300ms
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchInput);
+      setPage(1);
+      setSelectedListing(null);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
+  const handleClearSearch = () => {
+    setSearchInput('');
+    setDebouncedSearch('');
     setPage(1);
     setSelectedListing(null);
   };
 
-  // Load listings when params change
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      setDebouncedSearch(searchInput);
+      setPage(1);
+      setSelectedListing(null);
+    }
+  };
+
+  // Load listings when debouncedSearch, page, or pageSize changes
   useEffect(() => {
     loadListings();
-  }, [page, pageSize, searchTerm]);
+  }, [page, pageSize, debouncedSearch]);
 
   const loadListings = async () => {
     setLoading(true);
     setError('');
     try {
       const params = new URLSearchParams();
-      if (searchTerm.trim()) params.set('keyword', searchTerm.trim());
+      if (debouncedSearch.trim()) {
+        params.set('search', debouncedSearch.trim());
+        params.set('keyword', debouncedSearch.trim());
+      }
       params.set('page', page);
       params.set('pageSize', pageSize);
 
@@ -53,6 +78,7 @@ function MarketplaceView() {
       setListings([]);
     } finally {
       setLoading(false);
+      setInitialLoading(false);
     }
   };
 
@@ -135,171 +161,10 @@ function MarketplaceView() {
     return new Intl.NumberFormat('en-SL').format(price) + ' LKR';
   };
 
-  if (loading && listings.length === 0) {
+  if (initialLoading) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
         <Loader2 size={36} className="spin" style={{ color: 'var(--primary)' }} />
-      </div>
-    );
-  }
-
-  // Detail view modal
-  if (selectedListing) {
-    return (
-      <div style={{
-        position: 'fixed', inset: 0, zIndex: 1000,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
-      }}>
-        <div className="glass-card" style={{
-          maxWidth: '520px', width: '90%', maxHeight: '85vh', overflowY: 'auto',
-          padding: '2rem'
-        }}>
-          {/* Close */}
-          <button
-            style={{
-              position: 'absolute',
-              top: '12px',
-              right: '12px',
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              color: 'var(--text-secondary)',
-              padding: '4px',
-            }}
-            onClick={() => setSelectedListing(null)}
-          >
-            <XIcon size={20} />
-          </button>
-
-          {/* Photo */}
-          {selectedListing.photoPath && (
-            <div style={{ marginBottom: '1.25rem', borderRadius: 'var(--radius)', overflow: 'hidden', background: 'var(--surface-color)' }}>
-              <img
-                src={selectedListing.photoPath}
-                alt={selectedListing.title}
-                style={{ width: '100%', height: '200px', objectFit: 'cover' }}
-              />
-            </div>
-          )}
-
-          {/* Status + Title */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
-            {getStatusBadge(selectedListing.status)}
-          </div>
-          <h2 style={{ fontSize: '1.35rem', fontWeight: 800, margin: '0 0 0.5rem' }}>
-            {selectedListing.title}
-          </h2>
-
-          {/* Price */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem' }}>
-            <DollarSign size={18} style={{ color: 'var(--accent)' }} />
-            <span style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--accent)' }}>
-              {formatPrice(selectedListing.price)}
-            </span>
-          </div>
-
-          {/* Description */}
-          {selectedListing.description && (
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.6, marginBottom: '1.25rem' }}>
-              {selectedListing.description}
-            </p>
-          )}
-
-          {/* Related item */}
-          {selectedListing.valuation && (
-            <div style={{
-              padding: '0.75rem 1rem',
-              background: 'rgba(255,255,255,0.03)',
-              borderRadius: 'var(--radius-sm)',
-              border: '1px solid var(--border-color)',
-              marginBottom: '1.25rem',
-            }}>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.4rem' }}>Original item</div>
-              <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{selectedListing.valuation.itemName || '—'}</div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.3rem' }}>
-                Condition: {selectedListing.valuation.condition} · Valued at {formatPrice(selectedListing.valuation.price)}
-              </div>
-            </div>
-          )}
-
-          {/* Created */}
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
-            Listed {new Date(selectedListing.createdAt).toLocaleDateString('en-SL', {
-              day: 'numeric', month: 'short', year: 'numeric'
-            })}
-          </div>
-
-          {/* Contact button */}
-          {selectedListing.status === 'Available' && (
-            <button
-              className="btn btn-primary"
-              style={{ width: '100%', padding: '0.8rem', fontSize: '0.95rem', marginBottom: '0.75rem' }}
-              onClick={() => setShowOrderModal(true)}
-            >
-              <ShoppingCart size={18} style={{ marginRight: '0.5rem' }} />
-              Order Now
-            </button>
-          )}
-          {selectedListing.status !== 'Available' && (
-            <button
-              className="btn btn-secondary"
-              style={{ width: '100%', padding: '0.8rem', fontSize: '0.95rem' }}
-              disabled
-            >
-              <Clock size={18} style={{ marginRight: '0.5rem' }} />
-              {selectedListing.status === 'Reserved' ? 'Reserved by another buyer' : 'No longer available'}
-            </button>
-          )}
-
-          {/* Order confirmation modal */}
-          {showOrderModal && (
-            <div style={{
-              position: 'fixed', inset: 0, zIndex: 1100,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
-            }}>
-              <div className="glass-card" style={{ maxWidth: '400px', width: '90%', padding: '2rem' }}>
-                <h3 style={{ fontSize: '1.1rem', fontWeight: 800, margin: '0 0 1rem' }}>
-                  Confirm Order
-                </h3>
-                <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1.25rem' }}>
-                  You are about to purchase <strong>{selectedListing.title}</strong> for{' '}
-                  <strong style={{ color: 'var(--accent)' }}>
-                    {formatPrice(selectedListing.price)}
-                  </strong>
-                </p>
-                {orderError && (
-                  <div className="alert alert-danger" style={{ marginBottom: '1rem' }}>
-                    <AlertCircle size={16} />
-                    <span>{orderError}</span>
-                  </div>
-                )}
-                <div style={{ display: 'flex', gap: '0.75rem' }}>
-                  <button
-                    className="btn btn-secondary"
-                    style={{ flex: 1, padding: '0.7rem' }}
-                    onClick={() => setShowOrderModal(false)}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    className="btn btn-primary"
-                    style={{ flex: 1, padding: '0.7rem' }}
-                    onClick={handlePlaceOrder}
-                    disabled={placingOrder}
-                  >
-                    {placingOrder ? (
-                      <><Loader2 size={16} className="spin" style={{ marginRight: '0.4rem' }} />Processing...</>
-                    ) : (
-                      <><ShoppingCart size={16} className="spin" style={{ marginRight: '0.4rem' }} />Place Order</>
-                    )}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
       </div>
     );
   }
@@ -316,7 +181,7 @@ function MarketplaceView() {
       </div>
 
       {/* Search */}
-      <div style={{ position: 'relative', marginBottom: '1.5rem' }}>
+      <div style={{ position: 'relative', width: '100%', maxWidth: '400px', marginBottom: '1.5rem' }}>
         <Search size={16} style={{
           position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)',
           color: 'var(--text-muted)'
@@ -325,22 +190,30 @@ function MarketplaceView() {
           type="text"
           className="form-input"
           placeholder="Search listings..."
-          value={searchTerm}
-          onChange={(e) => handleSearch(e.target.value)}
-          style={{ paddingLeft: '2.5rem', paddingRight: '1rem', width: '100%', maxWidth: '400px' }}
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+          onKeyDown={handleKeyDown}
+          style={{ paddingLeft: '2.5rem', paddingRight: (loading || searchInput) ? '2.5rem' : '1rem', width: '100%' }}
         />
-        {searchTerm && (
-          <button
-            style={{
-              position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)',
-              background: 'none', border: 'none', cursor: 'pointer',
-              color: 'var(--text-muted)', padding: '2px 6px', fontSize: '0.8rem',
-            }}
-            onClick={() => handleSearch('')}
-          >
-            <XIcon size={14} />
-          </button>
-        )}
+        <div style={{
+          position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)',
+          display: 'flex', alignItems: 'center', gap: '4px'
+        }}>
+          {loading && <Loader2 size={15} className="spin" style={{ color: 'var(--primary)' }} />}
+          {searchInput && (
+            <button
+              type="button"
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer',
+                color: 'var(--text-muted)', padding: '2px 4px', fontSize: '0.8rem',
+                display: 'flex', alignItems: 'center'
+              }}
+              onClick={handleClearSearch}
+            >
+              <XIcon size={14} />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Error */}
@@ -352,13 +225,17 @@ function MarketplaceView() {
       )}
 
       {/* Listings Grid */}
-      {listings.length === 0 && !loading ? (
+      {loading ? (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '260px' }}>
+          <Loader2 size={32} className="spin" style={{ color: 'var(--primary)' }} />
+        </div>
+      ) : listings.length === 0 ? (
         <div className="glass-card" style={{ textAlign: 'center', padding: '4rem 2rem' }}>
           <LayoutGrid size={48} style={{ color: 'var(--text-secondary)', marginBottom: '1rem' }} />
           <p style={{ color: 'var(--text-secondary)', fontSize: '1rem', margin: 0 }}>
             No listings found.
           </p>
-          {searchTerm && (
+          {debouncedSearch && (
             <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '0.5rem' }}>
               Try a different search term.
             </p>
@@ -374,12 +251,11 @@ function MarketplaceView() {
             {listings.map((listing) => (
               <div
                 key={listing.id}
-                className="glass-card"
+                className="glass-card marketplace-card"
                 style={{
                   padding: '0',
                   cursor: 'pointer',
                   overflow: 'hidden',
-                  transition: 'transform 0.15s ease, box-shadow 0.15s ease',
                 }}
                 onClick={() => setSelectedListing(listing)}
                 onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setSelectedListing(listing); }}
@@ -476,6 +352,192 @@ function MarketplaceView() {
             </div>
           )}
         </>
+      )}
+
+      {/* Listing Detail Modal */}
+      {selectedListing && !showOrderModal && (
+        <div
+          className="modal-overlay"
+          onClick={() => setSelectedListing(null)}
+        >
+          <div
+            className="modal-card"
+            style={{
+              maxWidth: '520px',
+              width: '90%',
+              maxHeight: '85vh',
+              overflowY: 'auto',
+              padding: '2rem',
+              position: 'relative',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Close */}
+            <button
+              style={{
+                position: 'absolute',
+                top: '14px',
+                right: '14px',
+                background: 'rgba(255, 255, 255, 0.08)',
+                border: '1px solid rgba(255, 255, 255, 0.12)',
+                borderRadius: '50%',
+                cursor: 'pointer',
+                color: 'var(--text-secondary)',
+                width: '32px',
+                height: '32px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 10,
+                transition: 'all 0.15s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)';
+                e.currentTarget.style.color = '#fff';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
+                e.currentTarget.style.color = 'var(--text-secondary)';
+              }}
+              onClick={() => setSelectedListing(null)}
+              aria-label="Close"
+            >
+              <XIcon size={18} />
+            </button>
+
+            {/* Photo */}
+            {selectedListing.photoPath && (
+              <div style={{ marginBottom: '1.25rem', borderRadius: 'var(--radius)', overflow: 'hidden', background: 'var(--surface-color)', height: '220px' }}>
+                <img
+                  src={selectedListing.photoPath}
+                  alt={selectedListing.title}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+              </div>
+            )}
+
+            {/* Status + Title */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
+              {getStatusBadge(selectedListing.status)}
+            </div>
+            <h2 style={{ fontSize: '1.35rem', fontWeight: 800, margin: '0 0 0.5rem' }}>
+              {selectedListing.title}
+            </h2>
+
+            {/* Price */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem' }}>
+              <DollarSign size={18} style={{ color: 'var(--accent)' }} />
+              <span style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--accent)' }}>
+                {formatPrice(selectedListing.price)}
+              </span>
+            </div>
+
+            {/* Description */}
+            {selectedListing.description && (
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.6, marginBottom: '1.25rem' }}>
+                {selectedListing.description}
+              </p>
+            )}
+
+            {/* Related item */}
+            {selectedListing.valuation && (
+              <div style={{
+                padding: '0.75rem 1rem',
+                background: 'rgba(255,255,255,0.03)',
+                borderRadius: 'var(--radius-sm)',
+                border: '1px solid var(--border-color)',
+                marginBottom: '1.25rem',
+              }}>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.4rem' }}>Original item</div>
+                <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{selectedListing.valuation.itemName || '—'}</div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.3rem' }}>
+                  Condition: {selectedListing.valuation.condition} · Valued at {formatPrice(selectedListing.valuation.price)}
+                </div>
+              </div>
+            )}
+
+            {/* Created */}
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
+              Listed {new Date(selectedListing.createdAt).toLocaleDateString('en-SL', {
+                day: 'numeric', month: 'short', year: 'numeric'
+              })}
+            </div>
+
+            {/* Contact button */}
+            {selectedListing.status === 'Available' && (
+              <button
+                className="btn btn-primary"
+                style={{ width: '100%', padding: '0.8rem', fontSize: '0.95rem', marginBottom: '0.75rem' }}
+                onClick={() => setShowOrderModal(true)}
+              >
+                <ShoppingCart size={18} style={{ marginRight: '0.5rem' }} />
+                Order Now
+              </button>
+            )}
+            {selectedListing.status !== 'Available' && (
+              <button
+                className="btn btn-secondary"
+                style={{ width: '100%', padding: '0.8rem', fontSize: '0.95rem' }}
+                disabled
+              >
+                <Clock size={18} style={{ marginRight: '0.5rem' }} />
+                {selectedListing.status === 'Reserved' ? 'Reserved by another buyer' : 'No longer available'}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Order confirmation modal */}
+      {showOrderModal && selectedListing && (
+        <div
+          className="modal-overlay"
+          style={{ zIndex: 1100 }}
+          onClick={() => setShowOrderModal(false)}
+        >
+          <div
+            className="modal-card"
+            style={{ maxWidth: '420px', width: '90%', padding: '2rem', position: 'relative' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 800, margin: '0 0 1rem' }}>
+              Confirm Order
+            </h3>
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1.25rem' }}>
+              You are about to purchase <strong>{selectedListing.title}</strong> for{' '}
+              <strong style={{ color: 'var(--accent)' }}>
+                {formatPrice(selectedListing.price)}
+              </strong>
+            </p>
+            {orderError && (
+              <div className="alert alert-danger" style={{ marginBottom: '1rem' }}>
+                <AlertCircle size={16} />
+                <span>{orderError}</span>
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
+              <button
+                className="btn btn-secondary"
+                style={{ flex: 1, padding: '0.7rem' }}
+                onClick={() => setShowOrderModal(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn btn-primary"
+                style={{ flex: 1, padding: '0.7rem' }}
+                onClick={handlePlaceOrder}
+                disabled={placingOrder}
+              >
+                {placingOrder ? (
+                  <><Loader2 size={16} className="spin" style={{ marginRight: '0.4rem' }} />Processing...</>
+                ) : (
+                  <><ShoppingCart size={16} className="spin" style={{ marginRight: '0.4rem' }} />Place Order</>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

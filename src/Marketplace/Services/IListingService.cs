@@ -14,7 +14,7 @@ public interface IListingService
         Guid id, CancellationToken cancellationToken = default);
 
     Task<(bool Success, int StatusCode, string Message, List<ListingResponseDto> Listings, int TotalCount, int Page, int PageSize)> BrowseListingsAsync(
-        string? keyword, int page, int pageSize, CancellationToken cancellationToken = default);
+        string? search, int page, int pageSize, CancellationToken cancellationToken = default);
 
     Task<(bool Success, int StatusCode, string Message)> DeleteListingAsync(
         Guid id, CancellationToken cancellationToken = default);
