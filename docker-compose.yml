@@ -217,6 +217,23 @@ services:
       - prometheus
     restart: unless-stopped
 
+  # Web Frontend (React + Vite SPA)
+  web:
+    build:
+      context: .
+      dockerfile: src/apps/web/Dockerfile
+    container_name: ecotrack-web
+    ports:
+      - "5173:5173"
+      - "80:80"
+    networks:
+      - ecotrack-network
+    depends_on:
+      - identity
+      - logistics
+      - marketplace
+    restart: unless-stopped
+
 # Networks
 networks:
   ecotrack-network:
