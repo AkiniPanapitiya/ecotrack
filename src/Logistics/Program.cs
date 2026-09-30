@@ -48,6 +48,10 @@ builder.Services.AddScoped<IPickupService, PickupService>();
 builder.Services.AddScoped<IDisposalCertificateRepository, DisposalCertificateRepository>();
 builder.Services.AddScoped<IDisposalCertificateService, DisposalCertificateService>();
 
+// Kafka event producer (ECO-87) — publishes pickup lifecycle events
+builder.Services.AddSingleton<EcoTrack.LogisticsService.Messaging.IEventProducer,
+                              EcoTrack.LogisticsService.Messaging.KafkaProducerService>();
+
 // Configure Swagger / OpenAPI
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();

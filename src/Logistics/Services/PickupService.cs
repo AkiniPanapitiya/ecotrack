@@ -23,10 +23,13 @@ public interface IPickupService
 public class PickupService : IPickupService
 {
     private readonly IPickupRepository _pickupRepository;
+    private readonly EcoTrack.LogisticsService.Messaging.IEventProducer _eventProducer;
 
-    public PickupService(IPickupRepository pickupRepository)
+    public PickupService(IPickupRepository pickupRepository,
+                         EcoTrack.LogisticsService.Messaging.IEventProducer eventProducer)
     {
         _pickupRepository = pickupRepository;
+        _eventProducer = eventProducer;
     }
 
     public async Task<(bool Success, int StatusCode, string Message, PickupRequestDto? Data)> CreatePickupRequestAsync(
@@ -71,11 +74,26 @@ public class PickupService : IPickupService
             }).ToList() ?? new List<PickupItem>()
         };
 
-        var created = await _pickupRepository.CreatePickupAsync(pickupRequest, cancellationToken);
+                var created = await _pickupRepository.CreatePickupAsync(pickupRequest, cancellationToken);
         if (!created)
         {
             return (false, 500, "Failed to schedule pickup request.", null);
         }
+
+        await _eventProducer.PublishAsync(
+            "pickup.lifecycle.events",
+            pickupRequest.Id.ToString(),
+            new
+            {
+                eventType = "REQUESTED",
+                pickupId = pickupRequest.Id,
+                userId = pickupRequest.UserId,
+                category = pickupRequest.Category,
+                estimatedWeightKg = pickupRequest.EstimatedWeightKg,
+                status = pickupRequest.Status,
+                timestamp = DateTime.UtcNow
+            },
+            cancellationToken);
 
         var resultDto = MapToDto(pickupRequest);
         return (true, 201, "E-waste pickup request scheduled successfully.", resultDto);
