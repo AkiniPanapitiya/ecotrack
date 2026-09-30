@@ -26,6 +26,7 @@ export const PickupBookingView = () => {
     timeSlot: 'Morning (09:00 - 12:00)',
     specialInstructions: '',
   });
+  const [items, setItems] = useState([{ itemName: '', quantity: 1, condition: 'Used' }]);
 
   const [errors, setErrors] = useState({});
   const [serverError, setServerError] = useState('');
@@ -73,6 +74,15 @@ export const PickupBookingView = () => {
       newErrors.timeSlot = 'Please select a preferred time slot.';
     }
 
+    const validItems = items.filter(i => i.itemName.trim());
+    if (validItems.length === 0) newErrors.items = 'Add at least one item to collect.';
+    validItems.forEach((item, idx) => {
+      const realIdx = items.findIndex(i => i.itemName === item.itemName && i.itemName.trim());
+      if (!item.itemName.trim()) newErrors[`itemName_${realIdx}`] = 'Item name is required.';
+      if (!item.quantity || parseInt(item.quantity) < 1) newErrors[`qty_${realIdx}`] = 'Quantity must be at least 1.';
+      if (!['Used','New','Damaged','Refurbished'].includes(item.condition)) newErrors[`cond_${realIdx}`] = 'Select a condition.';
+    });
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -95,6 +105,10 @@ export const PickupBookingView = () => {
     setServerError('');
   };
 
+  const handleAddItem = () => setItems(prev => [...prev, { itemName: '', quantity: 1, condition: 'Used' }]);
+  const handleRemoveItem = (idx) => setItems(prev => prev.filter((_, i) => i !== idx));
+  const handleItemChange = (idx, field, value) => setItems(prev => prev.map((item, i) => i === idx ? { ...item, [field]: value } : item));
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
@@ -111,6 +125,12 @@ export const PickupBookingView = () => {
       preferredDate: formData.preferredDate,
       timeSlot: formData.timeSlot,
       specialInstructions: formData.specialInstructions.trim() || null,
+      items: items.filter(i => i.itemName.trim()).map(i => ({
+        itemName: i.itemName.trim(),
+        quantity: parseInt(i.quantity) || 1,
+        condition: i.condition,
+        unitPrice: 0,
+      })),
     };
 
     try {
@@ -297,6 +317,31 @@ export const PickupBookingView = () => {
               value={formData.specialInstructions}
               onChange={handleChange}
             />
+          </div>
+
+          <div style={{ marginTop: '0.25rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+              <label style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-primary)', margin: 0 }}>Items to Collect *</label>
+              <button type="button" onClick={handleAddItem} className="btn btn-sm" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                + Add Item
+              </button>
+            </div>
+            {errors.items && <div className="form-error" style={{ marginBottom: '0.5rem' }}><AlertCircle size={14} />{errors.items}</div>}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
+              {items.map((item, idx) => (
+                <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 80px 130px 36px', gap: '0.5rem', alignItems: 'center', padding: '0.75rem', background: 'rgba(255,255,255,0.02)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+                  <input type="text" className="form-input" placeholder="Item name (e.g. Old Laptop)" value={item.itemName} onChange={e => handleItemChange(idx, 'itemName', e.target.value)} style={{ paddingLeft: '10px' }} />
+                  <input type="number" min="1" className="form-input" placeholder="Qty" value={item.quantity} onChange={e => handleItemChange(idx, 'quantity', e.target.value)} style={{ textAlign: 'center', padding: '0.45rem 0.5rem' }} />
+                  <select className="form-input" value={item.condition} onChange={e => handleItemChange(idx, 'condition', e.target.value)} style={{ padding: '0.45rem 0.5rem' }}>
+                    <option value="Used">Used</option>
+                    <option value="New">New</option>
+                    <option value="Damaged">Damaged</option>
+                    <option value="Refurbished">Refurbished</option>
+                  </select>
+                  <button type="button" onClick={() => handleRemoveItem(idx)} style={{ background: 'var(--danger)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0.3rem' }}>×</button>
+                </div>
+              ))}
+            </div>
           </div>
 
           <button

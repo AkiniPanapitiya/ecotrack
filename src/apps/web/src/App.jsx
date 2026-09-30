@@ -7,6 +7,10 @@ import { Navbar } from './components/Navbar';
 import { RegisterView } from './views/RegisterView';
 import { LoginView } from './views/LoginView';
 import { ProfileView } from './views/ProfileView';
+import { KycView } from './views/KycView';
+import { KycAdminView } from './views/KycAdminView';
+import { AdminUsersView } from './views/AdminUsersView';
+import { AccessDeniedView } from './views/AccessDeniedView';
 import { PickupBookingView } from './views/PickupBookingView';
 import { DashboardView } from './views/DashboardView';
 import { ForgotPasswordView } from './views/ForgotPasswordView'; 
@@ -14,6 +18,12 @@ import { ResetPasswordView } from './views/ResetPasswordView';
 import { ScheduleManagementView } from './views/ScheduleManagementView';
 import  MyPickupsView  from './views/MyPickupsView';
 import { AuditReportView } from './views/AuditReportView';
+import ValuationView from './views/ValuationView';
+import { RecyclerPickupBookingView } from './views/RecyclerPickupBookingView';
+import MarketplaceView from './views/MarketplaceView';
+import CreateListingView from './views/CreateListingView';
+import MyOrdersView from './views/MyOrdersView';
+import DisposalCertificationView from './views/DisposalCertificationView';
 
 const HomeRedirect = () => {
   const { isAuthenticated } = useAuth();
@@ -37,8 +47,17 @@ export const App = () => {
               <Route path="/reset-password" element={<ResetPasswordView />} />
               <Route path="/schedule" element={<ProtectedRoute rolesAllowed={['Recycler']}><ScheduleManagementView /></ProtectedRoute>} />
               <Route path="/my-pickups" element={<ProtectedRoute><MyPickupsView /></ProtectedRoute>} />
+              <Route path="/valuations" element={<ProtectedRoute rolesAllowed={['Recycler']}><ValuationView /></ProtectedRoute>} />
               <Route path="/audit-report" element={<ProtectedRoute><AuditReportView /></ProtectedRoute>} />
-              <Route path="/" element={<HomeRedirect />} />
+              <Route path="/kyc" element={<ProtectedRoute rolesAllowed={['Recycler']}><KycView /></ProtectedRoute>} />
+              <Route path="/kyc-admin" element={<ProtectedRoute rolesAllowed={['Admin']}><KycAdminView /></ProtectedRoute>} />
+                  <Route path="/admin/users" element={<ProtectedRoute rolesAllowed={['Admin']}><AdminUsersView /></ProtectedRoute>} />
+                  <Route path="/access-denied" element={<AccessDeniedView />} />
+                  <Route path="/marketplace" element={<MarketplaceView />} />
+                  <Route path="/create-listing" element={<ProtectedRoute rolesAllowed={['Recycler']}><CreateListingView /></ProtectedRoute>} />
+                  <Route path="/my-orders" element={<ProtectedRoute rolesAllowed={['User']}><MyOrdersView /></ProtectedRoute>} />
+                  <Route path="/disposal-certification" element={<ProtectedRoute rolesAllowed={['Recycler', 'User']}><DisposalCertificationView /></ProtectedRoute>} />
+                  <Route path="/" element={<HomeRedirect />} />
             </Routes>
           </main>
         </div>

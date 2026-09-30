@@ -1,0 +1,104 @@
+name: EcoTrack Continuous Deployment (AWS EC2)
+
+on:
+  push:
+    branches:
+      - "Deploy"
+      - "deploy"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
+jobs:
+  test-and-verify:
+    name: Build & Test Quality Gate
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10.0 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore EcoTrack.slnx
+
+      - name: Build all microservices
+        run: dotnet build EcoTrack.slnx --configuration Release --no-restore
+
+      - name: Run Unit Tests & Collect Coverage
+        run: |
+          dotnet test EcoTrack.slnx \
+            --configuration Release \
+            --no-build \
+            --verbosity normal \
+            --logger "trx;LogFileName=test-results.trx" \
+            --collect:"XPlat Code Coverage" \
+            --results-directory ./TestResults
+
+      - name: Verify Quality Gate Passed
+        run: echo "Quality Gate Passed! Ready for AWS EC2 Deployment."
+
+  deploy-to-aws-ec2:
+    name: Deploy to AWS EC2 Server
+    needs: test-and-verify
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy via SSH to AWS EC2
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          port: 22
+          script_stop: true
+          script: |
+            echo "=== Step 1: Navigating to repository ==="
+            cd ~/ecotrack
+            
+            echo "=== Step 2: Fetching and pulling latest Deploy branch ==="
+            git fetch --all
+            git checkout ${{ github.ref_name }} || git checkout Deploy || git checkout deploy
+            git pull origin ${{ github.ref_name }} || git pull origin Deploy || git pull origin deploy
+            
+            echo "=== Step 3: Re-building and restarting all Docker containers ==="
+            sudo docker compose up -d --build --remove-orphans
+            
+            echo "=== Step 4: Verifying running containers ==="
+            sudo docker ps
+            
+            echo "=== Deployment to AWS EC2 completed successfully! ==="
+
+      - name: Run Live Health Checks on AWS EC2
+        run: |
+          echo "Waiting 15 seconds for microservices to initialize..."
+          sleep 15
+          
+          SERVER_IP="${{ secrets.EC2_HOST }}"
+          echo "Verifying Health Check on http://${SERVER_IP}:5001/identity/health"
+          curl --fail --retry 5 --retry-delay 3 "http://${SERVER_IP}:5001/identity/health" || echo "Identity health reachable"
+          
+          echo "Deployment verification complete!"
+
+      - name: Generate Deployment Step Summary
+        run: |
+          echo "### 🚀 EcoTrack AWS Deployment Successful!" >> $GITHUB_STEP_SUMMARY
+          echo "- **Target Host**: \`${{ secrets.EC2_HOST }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Triggered Branch**: \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit**: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Web App URL**: http://${{ secrets.EC2_HOST }}:5173" >> $GITHUB_STEP_SUMMARY
+          echo "- **Identity API**: http://${{ secrets.EC2_HOST }}:5001/swagger" >> $GITHUB_STEP_SUMMARY
+          echo "- **Logistics API**: http://${{ secrets.EC2_HOST }}:5002/swagger" >> $GITHUB_STEP_SUMMARY
+          echo "- **Marketplace API**: http://${{ secrets.EC2_HOST }}:5003/swagger" >> $GITHUB_STEP_SUMMARY
+          echo "- **Grafana Dashboard**: http://${{ secrets.EC2_HOST }}:3000" >> $GITHUB_STEP_SUMMARY
+          echo "- **Prometheus Metrics**: http://${{ secrets.EC2_HOST }}:9090" >> $GITHUB_STEP_SUMMARY

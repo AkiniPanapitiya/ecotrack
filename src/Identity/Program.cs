@@ -1,13 +1,11 @@
 using System.Text;
+using System.Security.Claims;
 using EcoTrack.IdentityService.Data;
 using EcoTrack.IdentityService.Repositories;
 using EcoTrack.IdentityService.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
-using System.Security.Claims;
 using System.IdentityModel.Tokens.Jwt;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using EcoTrack.IdentityService.Repositories;
 
 
 
@@ -21,12 +19,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins(
-                "http://localhost:3000",
-                "http://localhost:5173",
-                "http://127.0.0.1:5173",
-                "http://localhost:5174",
-                "http://127.0.0.1:5174")
+        policy.SetIsOriginAllowed(_ => true)
             .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials();
@@ -39,12 +32,15 @@ builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IAuditRepository, AuditRepository>();
 builder.Services.AddScoped<ITokenBlacklistRepository, TokenBlacklistRepository>();
 builder.Services.AddScoped<IPasswordResetTokenRepository, PasswordResetTokenRepository>();
+builder.Services.AddScoped<IRecyclerDocumentRepository, RecyclerDocumentRepository>();
 
 // Configure Domain Services
 builder.Services.AddScoped<IPasswordHasher, BcryptPasswordHasher>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 builder.Services.AddScoped<IProfileService, ProfileService>();
+builder.Services.AddScoped<IRecyclerKycService, RecyclerKycService>();
+builder.Services.AddScoped<IRoleService, RoleService>();
 
 // Configure JWT Authentication
 var jwtSecretKey = builder.Configuration["Jwt:SecretKey"] 
@@ -75,6 +71,19 @@ builder.Services.AddAuthentication(options =>
     };
     options.Events = new JwtBearerEvents
     {
+        OnMessageReceived = context =>
+        {
+            var token = context.Request.Query["access_token"].ToString();
+            if (string.IsNullOrEmpty(token))
+            {
+                token = context.Request.Query["token"].ToString();
+            }
+            if (!string.IsNullOrEmpty(token))
+            {
+                context.Token = token;
+            }
+            return Task.CompletedTask;
+        },
         OnTokenValidated = async context =>
         {
             var jti = context.Principal?.FindFirstValue(JwtRegisteredClaimNames.Jti);

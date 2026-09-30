@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { logisticsApi } from '../services/api';
-import { Calendar, Clock, AlertCircle, CheckCircle, Truck, MapPin, Phone, Scale, MessageSquare, PackageCheck } from 'lucide-react';
+import { Calendar, Clock, AlertCircle, CheckCircle, Truck, MapPin, Phone, Scale, MessageSquare, PackageCheck, Edit3, Copy, Check, Recycle } from 'lucide-react';
+import { copyTextToClipboard } from '../utils/clipboard';
 
 const TIME_SLOTS = [
   'Morning (09:00 - 12:00)',
@@ -24,6 +26,15 @@ export const ScheduleManagementView = () => {
   const [selectedSlot, setSelectedSlot] = useState({});
   const [conflictWarning, setConflictWarning] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [copiedId, setCopiedId] = useState(null);
+
+  const handleCopyId = async (id) => {
+    const ok = await copyTextToClipboard(id);
+    if (ok) {
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 2000);
+    }
+  };
 
   const loadData = async () => {
     setLoading(true);
@@ -256,22 +267,84 @@ export const ScheduleManagementView = () => {
                 border: '1px solid var(--border-color, #333)',
                 borderRadius: 'var(--radius-md)',
                 display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                flexWrap: 'wrap',
+                flexDirection: 'column',
                 gap: '0.75rem',
               }}
             >
-              <div>
-                <strong>{pickup.category}</strong> — {pickup.pickupAddress}
-                <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '0.25rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Calendar size={14} />
-                  {new Date(pickup.scheduledDate).toLocaleDateString()} — {pickup.scheduledTimeSlot}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
+                <div>
+                  <strong>{pickup.category}</strong> — {pickup.pickupAddress}
+                  <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '0.25rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Calendar size={14} />
+                    {new Date(pickup.scheduledDate).toLocaleDateString()} — {pickup.scheduledTimeSlot}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  <button className="btn btn-primary" onClick={() => handleMarkCollected(pickup.id)}>
+                    <PackageCheck size={16} /> Mark as Collected
+                  </button>
+                  <Link to="/valuations" className="btn btn-secondary"
+                    style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                    <Edit3 size={14} /> Value Items
+                  </Link>
                 </div>
               </div>
-              <button className="btn btn-primary" onClick={() => handleMarkCollected(pickup.id)}>
-                <PackageCheck size={16} /> Mark as Collected
-              </button>
+
+              {pickup.items?.length > 0 && (
+                <div style={{ padding: '0.6rem 0.8rem', background: 'rgba(255,255,255,0.02)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.35rem', fontWeight: 600 }}>Pickup Items:</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                    {pickup.items.map((item) => (
+                      <div key={item.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', fontSize: '0.85rem' }}>
+                        <span>• {item.itemName} (x{item.quantity})</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>ID: {item.id}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleCopyId(item.id)}
+                            style={{
+                              background: 'rgba(255,255,255,0.06)',
+                              border: '1px solid var(--border-color)',
+                              borderRadius: '4px',
+                              color: copiedId === item.id ? 'var(--primary)' : 'var(--text-secondary)',
+                              cursor: 'pointer',
+                              padding: '2px 6px',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '3px',
+                              fontSize: '0.7rem',
+                            }}
+                            title="Copy Item ID"
+                          >
+                            {copiedId === item.id ? <Check size={11} /> : <Copy size={11} />}
+                            {copiedId === item.id ? 'Copied!' : 'Copy ID'}
+                          </button>
+                          <Link
+                            to={`/disposal-certification?itemId=${item.id}`}
+                            style={{
+                              background: 'rgba(16, 185, 129, 0.12)',
+                              border: '1px solid rgba(16, 185, 129, 0.3)',
+                              borderRadius: '4px',
+                              color: 'var(--primary)',
+                              cursor: 'pointer',
+                              padding: '2px 6px',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '3px',
+                              fontSize: '0.7rem',
+                              textDecoration: 'none',
+                            }}
+                            title="Certify Disposal for this item"
+                          >
+                            <Recycle size={11} />
+                            Certify
+                          </Link>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -291,6 +364,61 @@ export const ScheduleManagementView = () => {
                 <Calendar size={14} />
                 Collected on {new Date(pickup.scheduledDate).toLocaleDateString()} — {pickup.scheduledTimeSlot}
               </div>
+
+              {pickup.items?.length > 0 && (
+                <div style={{ marginTop: '0.5rem', padding: '0.5rem 0.75rem', background: 'rgba(255,255,255,0.02)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.35rem', fontWeight: 600 }}>Collected Items:</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                    {pickup.items.map((item) => (
+                      <div key={item.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', fontSize: '0.85rem' }}>
+                        <span>• {item.itemName} (x{item.quantity})</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>ID: {item.id}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleCopyId(item.id)}
+                            style={{
+                              background: 'rgba(255,255,255,0.06)',
+                              border: '1px solid var(--border-color)',
+                              borderRadius: '4px',
+                              color: copiedId === item.id ? 'var(--primary)' : 'var(--text-secondary)',
+                              cursor: 'pointer',
+                              padding: '2px 6px',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '3px',
+                              fontSize: '0.7rem',
+                            }}
+                            title="Copy Item ID"
+                          >
+                            {copiedId === item.id ? <Check size={11} /> : <Copy size={11} />}
+                            {copiedId === item.id ? 'Copied!' : 'Copy ID'}
+                          </button>
+                          <Link
+                            to={`/disposal-certification?itemId=${item.id}`}
+                            style={{
+                              background: 'var(--primary-glow, rgba(46, 204, 113, 0.15))',
+                              border: '1px solid var(--primary)',
+                              borderRadius: '4px',
+                              color: 'var(--primary)',
+                              padding: '2px 6px',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '3px',
+                              fontSize: '0.7rem',
+                              textDecoration: 'none',
+                            }}
+                            title="Certify Disposal for this item"
+                          >
+                            <Recycle size={11} />
+                            Certify
+                          </Link>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>

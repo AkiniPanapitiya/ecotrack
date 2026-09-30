@@ -1,6 +1,7 @@
 -- =============================================================================
 -- EcoTrack Logistics Database Migration Script
 -- Sprint 1: E-Waste Pickup Scheduling (ECO-50)
+-- Sprint 3: Disposal Certification (ECO-71/E7.1)
 -- Target Database: ecotrack_logistics_db
 -- =============================================================================
 
@@ -81,3 +82,55 @@ DELIMITER ;
 
 CALL `sp_eco95_add_scheduling_columns`();
 DROP PROCEDURE IF EXISTS `sp_eco95_add_scheduling_columns`;
+
+-- 4. Disposal Certificates Table (Sprint 3 - E7.1)
+-- Records proof that a pickup item was properly recycled/disposed of.
+-- PickupItemId -> PickupItems in same DB (enforced by FK + UNIQUE).
+-- One certificate per item. Recycler name stored at creation time.
+CREATE TABLE IF NOT EXISTS `DisposalCertificates` (
+    `Id` VARCHAR(36) NOT NULL PRIMARY KEY,
+    `PickupItemId` VARCHAR(36) NOT NULL,
+    `RecyclerId` VARCHAR(36) NOT NULL,
+    `RecyclerName` VARCHAR(150) NOT NULL,
+    `DisposalMethod` VARCHAR(100) NOT NULL,
+    `DisposedAt` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    `CreatedAt` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    CONSTRAINT `fk_cert_item` FOREIGN KEY (`PickupItemId`) REFERENCES `PickupItems`(`Id`) ON DELETE RESTRICT,
+    CONSTRAINT `uq_cert_item` UNIQUE KEY (`PickupItemId`),
+    INDEX `idx_cert_recycler` (`RecyclerId`),
+    INDEX `idx_cert_method` (`DisposalMethod`),
+    INDEX `idx_cert_date` (`DisposedAt`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 5. Add Status column to PickupItems (Sprint 3 - E7.1)
+-- Tracks item lifecycle: Pending -> Collected -> Disposed.
+-- Uses stored procedure + information_schema for idempotency.
+DELIMITER $$
+DROP PROCEDURE IF EXISTS `sp_eco71_add_item_status` $$
+CREATE PROCEDURE `sp_eco71_add_item_status`()
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'PickupItems' AND COLUMN_NAME = 'Status'
+    ) THEN
+        ALTER TABLE `PickupItems` ADD COLUMN `Status` VARCHAR(50) NOT NULL DEFAULT 'Pending' AFTER `EstimatedWeightKg`;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'PickupItems' AND COLUMN_NAME = 'UpdatedAt'
+    ) THEN
+        ALTER TABLE `PickupItems` ADD COLUMN `UpdatedAt` DATETIME(6) NULL AFTER `Status`;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.STATISTICS
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'PickupItems' AND INDEX_NAME = 'idx_item_status'
+    ) THEN
+        ALTER TABLE `PickupItems` ADD INDEX `idx_item_status` (`Status`);
+    END IF;
+END $$
+DELIMITER ;
+
+CALL `sp_eco71_add_item_status`();
+DROP PROCEDURE IF EXISTS `sp_eco71_add_item_status`;

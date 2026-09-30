@@ -1,7 +1,15 @@
 import axios from 'axios';
 
-const IDENTITY_API_URL = import.meta.env.VITE_IDENTITY_API_URL || 'http://localhost:5001/api';
-const LOGISTICS_API_URL = import.meta.env.VITE_LOGISTICS_API_URL || 'http://localhost:5002/api';
+const getHost = () => {
+  if (typeof window !== 'undefined' && window.location.hostname) {
+    return window.location.hostname;
+  }
+  return 'localhost';
+};
+
+const IDENTITY_API_URL = import.meta.env.VITE_IDENTITY_API_URL || `http://${getHost()}:5001/api`;
+const LOGISTICS_API_URL = import.meta.env.VITE_LOGISTICS_API_URL || `http://${getHost()}:5002/api`;
+const MARKETPLACE_API_URL = import.meta.env.VITE_MARKETPLACE_API_URL || `http://${getHost()}:5003/marketplace`;
 
 const api = axios.create({
   baseURL: IDENTITY_API_URL,
@@ -12,6 +20,13 @@ const api = axios.create({
 
 const logisticsClient = axios.create({
   baseURL: LOGISTICS_API_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+const marketplaceClient = axios.create({
+  baseURL: MARKETPLACE_API_URL,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -30,6 +45,7 @@ const attachAuthToken = (client) => {
 
 attachAuthToken(api);
 attachAuthToken(logisticsClient);
+attachAuthToken(marketplaceClient);
 
 // ECO-12 / ECO-13: Auth Service Endpoints
 export const authApi = {
@@ -50,6 +66,21 @@ export const auditApi = {
   getReport: (params) => api.get('/audit/report', { params }),
 };
 
+// ECO-XX: KYC Verification Endpoints
+export const kycApi = {
+  uploadDocument: (formData) =>
+    api.post('/kyc/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  getMyStatus: () => api.get('/kyc/my-status'),
+  getPendingSubmissions: () => api.get('/kyc/pending'),
+  reviewDocument: (documentId, data) => api.put(`/kyc/review/${documentId}`, data),
+};
+
+// ECO-16: Role & Permission Management Endpoints
+export const roleApi = {
+  getUsers: () => api.get('/admin/users'),
+  changeUserRole: (userId, data) => api.put(`/admin/users/${userId}/role`, data),
+};
+
 // ECO-15: Logistics Pickup Booking Endpoints
 export const logisticsApi = {
   createPickup: (data) => logisticsClient.post('/pickup', data),
@@ -63,4 +94,8 @@ export const logisticsApi = {
   reschedulePickup: (id, data) => logisticsClient.put(`/pickup/${id}/reschedule`, data),
 };
 
-export default api;
+// ECO-71 / E7.1: Disposal Certification Endpoints
+export const disposalApi = {
+  createCertificate: (data) => logisticsClient.post('/disposal/certificate', data),
+  getCertificate: (pickupItemId) => logisticsClient.get(`/disposal/certificate/${pickupItemId}`),
+};

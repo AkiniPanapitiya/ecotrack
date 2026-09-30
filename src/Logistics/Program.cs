@@ -34,12 +34,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins(
-                "http://localhost:3000",
-                "http://localhost:5173",
-                "http://127.0.0.1:5173",
-                "http://localhost:5174",
-                "http://127.0.0.1:5174")
+        policy.SetIsOriginAllowed(_ => true)
             .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials();
@@ -50,6 +45,8 @@ builder.Services.AddCors(options =>
 builder.Services.AddSingleton<IDbConnectionFactory, DbConnectionFactory>();
 builder.Services.AddScoped<IPickupRepository, PickupRepository>();
 builder.Services.AddScoped<IPickupService, PickupService>();
+builder.Services.AddScoped<IDisposalCertificateRepository, DisposalCertificateRepository>();
+builder.Services.AddScoped<IDisposalCertificateService, DisposalCertificateService>();
 
 // Configure Swagger / OpenAPI
 builder.Services.AddEndpointsApiExplorer();

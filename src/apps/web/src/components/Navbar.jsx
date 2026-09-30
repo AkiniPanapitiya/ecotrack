@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Leaf, User, Shield, LogOut, FileText, LayoutDashboard, Building2, Truck, PackageSearch } from 'lucide-react';
+import { Leaf, User, Shield, LogOut, FileText, LayoutDashboard, Building2, Truck, PackageSearch, Users, Tag, Plus, Recycle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export const Navbar = () => {
@@ -28,31 +28,66 @@ export const Navbar = () => {
             </Link>
 
           {user?.role === 'User' && (
-            <Link to="/pickup" className="nav-link" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Truck size={18} />
-              <span>Book Pickup</span>
+            <>
+              <Link to="/pickup" className="nav-link" style={{ display: 'flex', alignItems: 'center', gap: '5px', whiteSpace: 'nowrap' }}>
+                <Truck size={15} />
+                <span>Book Pickup</span>
+              </Link>
+              <Link to="/my-pickups" className="nav-link" style={{ display: 'flex', alignItems: 'center', gap: '5px', whiteSpace: 'nowrap' }}>
+                <PackageSearch size={15} />
+                <span>My Pickups</span>
+              </Link>
+              <Link to="/marketplace" className="nav-link" style={{ display: 'flex', alignItems: 'center', gap: '5px', whiteSpace: 'nowrap' }}>
+                <Tag size={15} />
+                <span>Marketplace</span>
+              </Link>
+              <Link to="/my-orders" className="nav-link" style={{ display: 'flex', alignItems: 'center', gap: '5px', whiteSpace: 'nowrap' }}>
+                <PackageSearch size={15} />
+                <span>My Orders</span>
+              </Link>
+            </>
+          )}
+
+          {user?.role === 'Recycler' && (
+          <>
+            <Link to="/schedule" className="nav-link" style={{ display: 'flex', alignItems: 'center', gap: '5px', whiteSpace: 'nowrap' }}>
+              <Shield size={15} />
+              <span className="nav-text">Schedule Management</span>
             </Link>
+            <Link to="/kyc" className="nav-link" style={{ display: 'flex', alignItems: 'center', gap: '5px', whiteSpace: 'nowrap' }}>
+              <Shield size={15} />
+              <span className="nav-text">KYC Verification</span>
+            </Link>
+            <Link to="/valuations" className="nav-link" style={{ display: 'flex', alignItems: 'center', gap: '5px', whiteSpace: 'nowrap' }}>
+              <PackageSearch size={15} />
+              <span className="nav-text">Item Valuations</span>
+            </Link>
+            <Link to="/create-listing" className="nav-link" style={{ display: 'flex', alignItems: 'center', gap: '5px', whiteSpace: 'nowrap' }}>
+              <Plus size={15} />
+              <span className="nav-text">Create Listing</span>
+            </Link>
+            <Link to="/disposal-certification" className="nav-link" style={{ display: 'flex', alignItems: 'center', gap: '5px', whiteSpace: 'nowrap' }}>
+              <Recycle size={15} />
+              <span className="nav-text">Disposal Certification</span>
+            </Link>
+          </>
           )}
 
-          {user?.role === 'User' && (
-          <Link to="/my-pickups" className="nav-link" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <PackageSearch size={18} />
-              <span>My Pickups</span>
-          </Link>
-          )}
-            
-            {user?.role === 'Recycler' && (
-              <Link to="/schedule" className="nav-link" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Shield size={18} />
-                <span>Schedule Management</span>
-              </Link>
-            )}
-
-                        {user?.role === 'Admin' && (
-              <Link to="/audit-report" className="nav-link" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <FileText size={18} />
-                <span>Audit Report</span>
-              </Link>
+            {user?.role === 'Admin' && (
+              <>
+                <Link to="/admin/users" className="nav-link" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Users size={18} />
+                  <span>User Management</span>
+                </Link>
+                <Link to="/audit-report" className="nav-link" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <FileText size={18} />
+                  <span>Audit Report</span>
+                </Link>
+                <Link to="/kyc-admin" className="nav-link" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Shield size={18} />
+                  <span>KYC Admin</span>
+                </Link>
+              </>
             )}
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginLeft: '12px', borderLeft: '1px solid var(--border-color)', paddingLeft: '16px' }}>
