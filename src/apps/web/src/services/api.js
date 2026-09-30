@@ -1,7 +1,15 @@
 import axios from 'axios';
 
-const IDENTITY_API_URL = import.meta.env.VITE_IDENTITY_API_URL || 'http://localhost:5001/api';
-const LOGISTICS_API_URL = import.meta.env.VITE_LOGISTICS_API_URL || 'http://localhost:5002/api';
+const getHost = () => {
+  if (typeof window !== 'undefined' && window.location.hostname) {
+    return window.location.hostname;
+  }
+  return 'localhost';
+};
+
+const IDENTITY_API_URL = import.meta.env.VITE_IDENTITY_API_URL || `http://${getHost()}:5001/api`;
+const LOGISTICS_API_URL = import.meta.env.VITE_LOGISTICS_API_URL || `http://${getHost()}:5002/api`;
+const MARKETPLACE_API_URL = import.meta.env.VITE_MARKETPLACE_API_URL || `http://${getHost()}:5003/marketplace`;
 
 const api = axios.create({
   baseURL: IDENTITY_API_URL,
@@ -17,6 +25,13 @@ const logisticsClient = axios.create({
   },
 });
 
+const marketplaceClient = axios.create({
+  baseURL: MARKETPLACE_API_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
 // Attach token if present
 const attachAuthToken = (client) => {
   client.interceptors.request.use((config) => {
@@ -27,15 +42,6 @@ const attachAuthToken = (client) => {
     return config;
   });
 };
-
-const MARKETPLACE_API_URL = import.meta.env.VITE_MARKETPLACE_API_URL || 'http://localhost:5003/marketplace';
-
-const marketplaceClient = axios.create({
-  baseURL: MARKETPLACE_API_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
 
 attachAuthToken(api);
 attachAuthToken(logisticsClient);
