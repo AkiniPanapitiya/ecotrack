@@ -2,23 +2,28 @@ using EcoTrack.LogisticsService.Data;
 using EcoTrack.LogisticsService.DTOs;
 using EcoTrack.LogisticsService.Models;
 using EcoTrack.LogisticsService.Repositories;
+using EcoTrack.LogisticsService.Events;
+using EcoTrack.LogisticsService.Messaging;
 
 namespace EcoTrack.LogisticsService.Services;
 
 public class DisposalCertificateService : IDisposalCertificateService
 {
-    private readonly IDisposalCertificateRepository _certRepository;
+       private readonly IDisposalCertificateRepository _certRepository;
     private readonly IPickupRepository _pickupRepository;
     private readonly IDbConnectionFactory _connectionFactory;
+    private readonly IEventPublisher _eventPublisher;
 
     public DisposalCertificateService(
         IDisposalCertificateRepository certRepository,
         IPickupRepository pickupRepository,
-        IDbConnectionFactory connectionFactory)
+        IDbConnectionFactory connectionFactory,
+        IEventPublisher eventPublisher)
     {
         _certRepository = certRepository;
         _pickupRepository = pickupRepository;
         _connectionFactory = connectionFactory;
+        _eventPublisher = eventPublisher;
     }
 
     public async Task<(bool Success, int StatusCode, string Message, DisposalCertificateDto? Certificate)> CreateCertificateAsync(
@@ -54,6 +59,20 @@ public class DisposalCertificateService : IDisposalCertificateService
         {
             return (false, 404, "Pickup item not found or not assigned to you.", null);
         }
+
+                await _eventPublisher.PublishAsync(
+            EwasteDisposalCertifiedEvent.Topic,
+            pickupItemId.ToString(),
+            new EwasteDisposalCertifiedEvent
+            {
+                CertificateId = result.Certificate?.Id.ToString() ?? string.Empty,
+                PickupRequestId = item.PickupRequestId.ToString(),
+                RecyclerId = recyclerId.ToString(),
+                WeightKg = item.EstimatedWeightKg,
+                DisposalMethod = disposalMethod,
+                CertificateNumber = result.Certificate?.Id.ToString() ?? string.Empty
+            },
+            cancellationToken);
 
         return (true, 201, "Disposal certificate created.", result.Certificate);
     }
