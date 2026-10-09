@@ -4,6 +4,7 @@ using EcoTrack.LogisticsService.DTOs;
 using EcoTrack.LogisticsService.Models;
 using EcoTrack.LogisticsService.Repositories;
 using EcoTrack.LogisticsService.Services;
+using EcoTrack.LogisticsService.Messaging;
 using Moq;
 using Xunit;
 
@@ -11,9 +12,10 @@ namespace EcoTrack.LogisticsService.Tests;
 
 public class DisposalCertificateServiceTests
 {
-    private readonly Mock<IDisposalCertificateRepository> _certRepoMock;
+       private readonly Mock<IDisposalCertificateRepository> _certRepoMock;
     private readonly Mock<IPickupRepository> _pickupRepoMock;
     private readonly Mock<IDbConnectionFactory> _connectionFactoryMock;
+    private readonly Mock<IEventPublisher> _eventPublisherMock;
     private readonly DisposalCertificateService _service;
 
     public DisposalCertificateServiceTests()
@@ -21,7 +23,12 @@ public class DisposalCertificateServiceTests
         _certRepoMock = new Mock<IDisposalCertificateRepository>();
         _pickupRepoMock = new Mock<IPickupRepository>();
         _connectionFactoryMock = new Mock<IDbConnectionFactory>();
-        _service = new DisposalCertificateService(_certRepoMock.Object, _pickupRepoMock.Object, _connectionFactoryMock.Object);
+        _eventPublisherMock = new Mock<IEventPublisher>();
+        _service = new DisposalCertificateService(
+            _certRepoMock.Object,
+            _pickupRepoMock.Object,
+            _connectionFactoryMock.Object,
+            _eventPublisherMock.Object);
     }
 
     private static PickupRequest CreatePickupWithItem(Guid pickupId, Guid userId, Guid recyclerId, Guid itemId, string itemName = "Test Item")
