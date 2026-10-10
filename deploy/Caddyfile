@@ -1,0 +1,23 @@
+{$SITE_ADDRESS} {
+	encode gzip
+
+	handle_path /svc/identity/* {
+		reverse_proxy identity:5001
+	}
+
+	handle_path /svc/logistics/* {
+		reverse_proxy logistics:5002
+	}
+
+	handle_path /svc/marketplace/* {
+		reverse_proxy marketplace:5003
+	}
+
+	handle_path /svc/analytics/* {
+		reverse_proxy analytics:5004
+	}
+
+	handle {
+		reverse_proxy web:80
+	}
+}
