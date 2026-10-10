@@ -71,7 +71,7 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_HTTP_PORTS=5003
-      - ConnectionStrings__DefaultConnection=Server=ecotrack-db;Database=ecotrack_marketplace_db;Uid=root;Pwd=root123;
+      - ConnectionStrings__MarketplaceDb=Server=ecotrack-db;Port=3306;Database=ecotrack_marketplace_db;User=root;Password=root123;AllowUserVariables=True;UseAffectedRows=False;
       - Kafka__BootstrapServers=kafka:9092
     networks:
       - ecotrack-network
@@ -168,7 +168,7 @@ services:
       - MYSQL_ROOT_PASSWORD=root123
     volumes:
       - db-data:/var/lib/mysql
-      - ./scripts/init-databases.sql:/docker-entrypoint-initdb.d/init-databases.sql
+      - ./database/migrations:/docker-entrypoint-initdb.d:ro
     networks:
       - ecotrack-network
     healthcheck:
