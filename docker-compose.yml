@@ -23,7 +23,7 @@ services:
     depends_on:
       - kafka
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5001/identity/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:5001/identity/health"]
       interval: 10s
       timeout: 3s
       retries: 3
@@ -51,7 +51,7 @@ services:
       - kafka
       - identity
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5002/logistics/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:5002/logistics/health"]
       interval: 10s
       timeout: 3s
       retries: 3
@@ -71,7 +71,7 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_HTTP_PORTS=5003
-      - ConnectionStrings__DefaultConnection=Server=ecotrack-db;Database=ecotrack_marketplace_db;Uid=root;Pwd=root123;
+      - ConnectionStrings__MarketplaceDb=Server=ecotrack-db;Port=3306;Database=ecotrack_marketplace_db;User=root;Password=root123;AllowUserVariables=True;UseAffectedRows=False;
       - Kafka__BootstrapServers=kafka:9092
     networks:
       - ecotrack-network
@@ -79,7 +79,7 @@ services:
       - kafka
       - db
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5003/marketplace/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:5003/marketplace/health"]
       interval: 10s
       timeout: 3s
       retries: 3
@@ -107,7 +107,7 @@ services:
       - kafka
       - db
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5004/analytics/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:5004/analytics/health"]
       interval: 10s
       timeout: 3s
       retries: 3
@@ -168,7 +168,7 @@ services:
       - MYSQL_ROOT_PASSWORD=root123
     volumes:
       - db-data:/var/lib/mysql
-      - ./scripts/init-databases.sql:/docker-entrypoint-initdb.d/init-databases.sql
+      - ./database/migrations:/docker-entrypoint-initdb.d:ro
     networks:
       - ecotrack-network
     healthcheck:
