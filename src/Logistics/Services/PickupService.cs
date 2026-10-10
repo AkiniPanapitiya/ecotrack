@@ -1,4 +1,6 @@
 using EcoTrack.LogisticsService.DTOs;
+using EcoTrack.LogisticsService.Events;
+using EcoTrack.LogisticsService.Messaging;
 using EcoTrack.LogisticsService.Models;
 using EcoTrack.LogisticsService.Repositories;
 
@@ -23,10 +25,12 @@ public interface IPickupService
 public class PickupService : IPickupService
 {
     private readonly IPickupRepository _pickupRepository;
+    private readonly IEventPublisher _eventPublisher;
 
-    public PickupService(IPickupRepository pickupRepository)
+    public PickupService(IPickupRepository pickupRepository, IEventPublisher eventPublisher)
     {
         _pickupRepository = pickupRepository;
+        _eventPublisher = eventPublisher;
     }
 
     public async Task<(bool Success, int StatusCode, string Message, PickupRequestDto? Data)> CreatePickupRequestAsync(
@@ -165,6 +169,19 @@ public class PickupService : IPickupService
             return (false, 500, "Failed to confirm schedule. Please try again.");
         }
 
+                await _eventPublisher.PublishAsync(
+            PickupScheduledEvent.Topic,
+            pickupId.ToString(),
+            new PickupScheduledEvent
+            {
+                PickupRequestId = pickupId.ToString(),
+                UserId = pickup.UserId.ToString(),
+                RecyclerId = dto.RecyclerId.ToString(),
+                ScheduledDate = dto.ScheduledDate.Date,
+                ScheduledTimeSlot = dto.ScheduledTimeSlot
+            },
+            cancellationToken);
+
         return (true, 200, "Pickup scheduled successfully.");
     }
 
@@ -235,7 +252,21 @@ public class PickupService : IPickupService
             return PickupResult.Fail("Only a scheduled pickup can be marked as collected.");
         }
 
-        await _pickupRepository.UpdateStatusAsync(pickupId, "Collected", cancellationToken);
+            await _pickupRepository.UpdateStatusAsync(pickupId, "Collected", cancellationToken);
+
+        await _eventPublisher.PublishAsync(
+            PickupCollectedEvent.Topic,
+            pickupId.ToString(),
+            new PickupCollectedEvent
+            {
+                PickupRequestId = pickupId.ToString(),
+                UserId = pickup.UserId.ToString(),
+                RecyclerId = requestingRecyclerId.ToString(),
+                EstimatedWeightKg = pickup.EstimatedWeightKg,
+                ItemCount = pickup.Items.Count
+            },
+            cancellationToken);
+
         return PickupResult.Ok();
     }
     public async Task<PickupStatusDto?> GetPickupStatusAsync(Guid id, CancellationToken cancellationToken = default)
