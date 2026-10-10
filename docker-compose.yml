@@ -227,13 +227,34 @@ services:
     container_name: ecotrack-web
     ports:
       - "5173:5173"
-      - "80:80"
     networks:
       - ecotrack-network
     depends_on:
       - identity
       - logistics
       - marketplace
+    restart: unless-stopped
+
+  # HTTPS reverse proxy (automatic Let's Encrypt certificate)
+  caddy:
+    image: caddy:2.8
+    container_name: ecotrack-caddy
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - SITE_ADDRESS=${SITE_ADDRESS:-localhost}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - web
+      - identity
+      - logistics
+      - marketplace
+    networks:
+      - ecotrack-network
     restart: unless-stopped
 
 # Networks
@@ -250,5 +271,9 @@ volumes:
   prometheus-data:
     driver: local
   grafana-data:
+    driver: local
+  caddy-data:
+    driver: local
+  caddy-config:
     driver: local
 
