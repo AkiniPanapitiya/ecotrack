@@ -63,7 +63,7 @@ public class Sprint4E2ETests : IDisposable
     public void E2E_01_RecyclerAddsDriverAndAssignsToScheduledPickup()
     {
         // 1. Log in as Recycler
-        LoginAs("recycler@ecotrack.lk", "RecyclerPassword@2026!");
+        LoginAs("recycler@test.lk", "RecyclerPassword@2026!");
 
         // 2. Navigate to Add Driver flow
         _driver.Navigate().GoToUrl($"{BaseUrl}/drivers/add");
@@ -71,7 +71,7 @@ public class Sprint4E2ETests : IDisposable
         driverNameInput.Clear();
         driverNameInput.SendKeys("Test Driver R1");
 
-        var assignPickupBtn = _driver.FindElement(By.CssSelector("button[type='submit'], button:has(text('Assign Pickup'))"));
+        var assignPickupBtn = _driver.FindElement(By.XPath("//button[@type='submit' or contains(text(), 'Assign Pickup')]"));
         assignPickupBtn.Click();
 
         _wait.Until(d => d.PageSource.Contains("Scheduled") || d.Url.Contains("/scheduled"));
@@ -88,14 +88,14 @@ public class Sprint4E2ETests : IDisposable
     public void E2E_02_RecorderLogsDropOff_PickupShowsCollected()
     {
         // 1. Log in as Recycler
-        LoginAs("recycler@ecotrack.lk", "RecyclerPassword@2026!");
+        LoginAs("recycler@test.lk", "RecyclerPassword@2026!");
 
         // 2. Navigate to pickups and log drop-off
         _driver.Navigate().GoToUrl($"{BaseUrl}/pickups/active");
         _wait.Until(d => d.PageSource.Contains("Active") || d.Url.Contains("/pickups/active"));
 
         // Find the first active pickup and log drop-off
-        var dropOffBtn = _wait.Until(d => d.FindElement(By.CssSelector("button:has(text('Log Drop-off')), button:has(text('Collect'))")));
+        var dropOffBtn = _wait.Until(d => d.FindElement(By.XPath("//button[contains(text(), 'Log Drop-off') or contains(text(), 'Collect')]")));
         dropOffBtn.Click();
 
         _wait.Until(d => d.PageSource.Contains("Collected") || d.PageSource.Contains("Collected"));
@@ -112,13 +112,13 @@ public class Sprint4E2ETests : IDisposable
     public void E2E_03_BuyerOrdersItem_PaidThenRefunded()
     {
         // 1. Log in as Buyer
-        LoginAs("buyer@ecotrack.lk", "BuyerPassword@2026!");
+        LoginAs("buyer@test.lk", "BuyerPassword@2026!");
 
         // 2. Navigate to Marketplace and order an item
         _driver.Navigate().GoToUrl($"{BaseUrl}/marketplace");
         _wait.Until(d => d.PageSource.Contains("Marketplace") || d.Url.Contains("/marketplace"));
 
-        var orderBtn = _wait.Until(d => d.FindElement(By.CssSelector("button:has(text('Order')), button:has(text('Buy'))")));
+        var orderBtn = _wait.Until(d => d.FindElement(By.XPath("//button[contains(text(), 'Order') or contains(text(), 'Buy')]")));
         orderBtn.Click();
 
         _wait.Until(d => d.PageSource.Contains("Pending") || d.Url.Contains("/pending-payment"));
@@ -127,23 +127,23 @@ public class Sprint4E2ETests : IDisposable
         Assert.Contains("Pending", _driver.PageSource);
 
         // 4. Log in as Recycler and mark as Paid
-        LoginAs("recycler@ecotrack.lk", "RecyclerPassword@2026!");
+        LoginAs("recycler@test.lk", "RecyclerPassword@2026!");
 
         _driver.Navigate().GoToUrl($"{BaseUrl}/recycler/orders");
         _wait.Until(d => d.PageSource.Contains("Orders") || d.Url.Contains("/recycler/orders"));
 
-        var markPaidBtn = _wait.Until(d => d.FindElement(By.CssSelector("button:has(text('Mark Paid')), button:has(text('Pay'))")));
+        var markPaidBtn = _wait.Until(d => d.FindElement(By.XPath("//button[contains(text(), 'Mark Paid') or contains(text(), 'Pay')]")));
         markPaidBtn.Click();
 
         _wait.Until(d => d.PageSource.Contains("Paid") || d.PageSource.Contains("Completed"));
 
         // 5. Log in as Buyer and trigger refund
-        LoginAs("buyer@ecotrack.lk", "BuyerPassword@2026!");
+        LoginAs("buyer@test.lk", "BuyerPassword@2026!");
 
         _driver.Navigate().GoToUrl($"{BaseUrl}/buyer/orders");
         _wait.Until(d => d.PageSource.Contains("Orders") || d.Url.Contains("/buyer/orders"));
 
-        var refundBtn = _wait.Until(d => d.FindElement(By.CssSelector("button:has(text('Refund')), button:has(text('Cancel Order'))")));
+        var refundBtn = _wait.Until(d => d.FindElement(By.XPath("//button[contains(text(), 'Refund') or contains(text(), 'Cancel Order')]")));
         refundBtn.Click();
 
         _wait.Until(d => d.PageSource.Contains("Cancelled") || d.PageSource.Contains("Refunded"));
@@ -160,7 +160,7 @@ public class Sprint4E2ETests : IDisposable
     public void E2E_04_SalesReportLoadsFiltersAndExports()
     {
         // 1. Log in as Admin
-        LoginAs("admin@ecotrack.lk", "AdminPassword@2026!");
+        LoginAs("admin@test.lk", "AdminPassword@2026!");
 
         // 2. Navigate to Sales Report
         _driver.Navigate().GoToUrl($"{BaseUrl}/admin/sales-report");
@@ -172,13 +172,13 @@ public class Sprint4E2ETests : IDisposable
         firstOption.Click();
 
         // 4. Apply filter
-        var applyBtn = _wait.Until(d => d.FindElement(By.CssSelector("button[type='submit'], button:has(text('Apply')), button:has(text('Filter'))")));
+        var applyBtn = _wait.Until(d => d.FindElement(By.XPath("//button[@type='submit' or contains(text(), 'Apply') or contains(text(), 'Filter')]")));
         applyBtn.Click();
 
         _wait.Until(d => d.PageSource.Contains("Filtered") || d.PageSource.Contains("Results"));
 
         // 5. Export report
-        var exportBtn = _wait.Until(d => d.FindElement(By.CssSelector("button:has(text('Export')), a:has(text('Export'))")));
+        var exportBtn = _wait.Until(d => d.FindElement(By.XPath("//button[contains(text(), 'Export')] | //a[contains(text(), 'Export')]")));
         exportBtn.Click();
 
         _wait.Until(d => d.PageSource.Contains("Exported") || d.PageSource.Contains("CSV") || d.PageSource.Contains("Download"));
@@ -195,23 +195,23 @@ public class Sprint4E2ETests : IDisposable
     public void E2E_05_SchedulingAndOrderingProduceNotifications()
     {
         // 1. Schedule a pickup as Recycler
-        LoginAs("recycler@ecotrack.lk", "RecyclerPassword@2026!");
+        LoginAs("recycler@etest.lk", "RecyclerPassword@2026!");
 
         _driver.Navigate().GoToUrl($"{BaseUrl}/schedule");
         _wait.Until(d => d.PageSource.Contains("Schedule") || d.Url.Contains("/schedule"));
 
-        var schedulePickupBtn = _wait.Until(d => d.FindElement(By.CssSelector("button:has(text('Schedule Pickup')), button:has(text('Create Pickup'))")));
+        var schedulePickupBtn = _wait.Until(d => d.FindElement(By.XPath("//button[contains(text(), 'Schedule Pickup') or contains(text(), 'Create Pickup')]")));
         schedulePickupBtn.Click();
 
         _wait.Until(d => d.PageSource.Contains("Scheduled") || d.PageSource.Contains("Notification"));
 
         // 2. Place an order as Buyer
-        LoginAs("buyer@ecotrack.lk", "BuyerPassword@2026!");
+        LoginAs("buyer@test.lk", "BuyerPassword@2026!");
 
         _driver.Navigate().GoToUrl($"{BaseUrl}/marketplace");
         _wait.Until(d => d.PageSource.Contains("Marketplace") || d.Url.Contains("/marketplace"));
 
-        var orderBtn = _wait.Until(d => d.FindElement(By.CssSelector("button:has(text('Order')), button:has(text('Buy'))")));
+        var orderBtn = _wait.Until(d => d.FindElement(By.XPath("//button[contains(text(), 'Order') or contains(text(), 'Buy')]")));
         orderBtn.Click();
 
         _wait.Until(d => d.PageSource.Contains("Pending") || d.Url.Contains("/pending-payment"));
@@ -232,7 +232,7 @@ public class Sprint4E2ETests : IDisposable
     public void E2E_06_AdminSeesAuditLogAndFindsByItemId()
     {
         // 1. Log in as Admin
-        LoginAs("admin@ecotrack.lk", "AdminPassword@2026!");
+        LoginAs("admin@test.lk", "AdminPassword@2026!");
 
         // 2. Navigate to Audit Log
         _driver.Navigate().GoToUrl($"{BaseUrl}/admin/audit-log");
@@ -243,7 +243,7 @@ public class Sprint4E2ETests : IDisposable
         searchInput.Clear();
         searchInput.SendKeys("ITEM-001"); // Known test item ID
 
-        var searchBtn = _driver.FindElement(By.CssSelector("button:has(text('Search'), text('Find'), text('Go'))"));
+        var searchBtn = _driver.FindElement(By.XPath("//button[contains(text(), 'Search') or contains(text(), 'Find') or contains(text(), 'Go')]"));
         searchBtn.Click();
 
         _wait.Until(d => d.PageSource.Contains("ITEM-001") || d.PageSource.Contains("Found"));
