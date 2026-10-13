@@ -260,15 +260,14 @@ export const RegisterView = () => {
 
             <div className="form-group">
               <label className="form-label">Confirm Password *</label>
-              <input
-                type="password"
-                name="confirmPassword"
-                className="form-input"
-                placeholder="••••••••"
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                onBlur={handleBlur}
-              />
+            <PasswordInput
+              id="confirmPassword"
+              name="confirmPassword"
+              value={formData.confirmPassword}
+              onChange={handleChange}
+              autoComplete="current-password"
+              hasError={!!errors.confirmPassword}
+            />
               {errors.confirmPassword && <div className="form-error"><AlertCircle size={14} />{errors.confirmPassword}</div>}
             </div>
           </div>
