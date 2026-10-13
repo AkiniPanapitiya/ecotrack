@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Leaf, Lock, Mail, AlertCircle, ArrowRight } from 'lucide-react';
 import { useLocation } from "react-router-dom";
-import { PasswordInput } from '../../components/PasswordInput';
+import { PasswordInput } from '../components/PasswordInput';
 
 export const LoginView = () => {
   const { login } = useAuth();
