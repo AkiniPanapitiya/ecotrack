@@ -1,7 +1,8 @@
 import axios from 'axios';
+import { serviceUrl } from './api';
 
 // ECO-17: Marketplace Valuation Endpoints
-const MARKETPLACE_API_URL = import.meta.env.VITE_MARKETPLACE_API_URL || 'http://localhost:5003/api';
+const MARKETPLACE_API_URL = import.meta.env.VITE_MARKETPLACE_API_URL || serviceUrl('marketplace', 5003, '/api');
 
 const marketplaceClient = axios.create({
   baseURL: MARKETPLACE_API_URL,

@@ -1,0 +1,113 @@
+name: EcoTrack Continuous Deployment (Azure VM)
+
+on:
+  push:
+    branches: [ "Deploy" ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  test-and-verify:
+    name: Build & Test Quality Gate
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10.0 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore EcoTrack.slnx
+
+      - name: Build all microservices
+        run: dotnet build EcoTrack.slnx --configuration Release --no-restore
+
+      - name: Run unit tests
+        run: dotnet test EcoTrack.slnx --configuration Release --no-build --verbosity normal
+
+  deploy-to-azure:
+    name: Deploy to Azure VM
+    needs: test-and-verify
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Deploy over SSH with automatic rollback
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.AZURE_VM_HOST }}
+          username: azureuser
+          key: ${{ secrets.AZURE_VM_SSH_KEY }}
+          port: 22
+          command_timeout: 30m
+          script: |
+            set -e
+            cd ~/ecotrack
+
+            PREVIOUS_COMMIT=$(git rev-parse HEAD)
+            echo "=== Currently running commit: $PREVIOUS_COMMIT"
+
+            git fetch origin Deploy
+            git checkout -B Deploy origin/Deploy
+            echo "=== Deploying commit: $(git rev-parse HEAD)"
+
+            docker compose up -d --build --remove-orphans
+
+            check_health() {
+              for url in \
+                http://localhost:5001/identity/health \
+                http://localhost:5002/logistics/health \
+                http://localhost:5003/marketplace/health \
+                http://localhost:5004/analytics/health \
+                http://localhost:5173; do
+                if ! curl -fsS --retry 12 --retry-delay 5 --retry-all-errors "$url" > /dev/null; then
+                  echo "!!! Health check FAILED: $url"
+                  return 1
+                fi
+                echo "OK  $url"
+              done
+            }
+
+            if check_health; then
+              echo "=== Deployment successful"
+            else
+              echo "=== Rolling back to $PREVIOUS_COMMIT"
+              git checkout -B Deploy "$PREVIOUS_COMMIT"
+              docker compose up -d --build --remove-orphans
+              exit 1
+            fi
+
+            docker compose ps
+
+      - name: Verify public endpoints from the internet
+        run: |
+          HOST="${{ secrets.AZURE_VM_HOST }}"
+          for url in \
+            "http://$HOST:5001/identity/health" \
+            "http://$HOST:5002/logistics/health" \
+            "http://$HOST:5003/marketplace/health" \
+            "http://$HOST:5004/analytics/health"; do
+            curl -fsS --retry 5 --retry-delay 5 "$url"
+            echo
+          done
+
+      - name: Deployment summary
+        run: |
+          HOST="${{ secrets.AZURE_VM_HOST }}"
+          echo "### EcoTrack deployed to Azure VM" >> $GITHUB_STEP_SUMMARY
+          echo "- Commit: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Web app: http://$HOST:5173" >> $GITHUB_STEP_SUMMARY
+          echo "- Identity API: http://$HOST:5001/swagger" >> $GITHUB_STEP_SUMMARY
+          echo "- Logistics API: http://$HOST:5002/swagger" >> $GITHUB_STEP_SUMMARY
+          echo "- Marketplace API: http://$HOST:5003/swagger" >> $GITHUB_STEP_SUMMARY
+          echo "- Grafana: http://$HOST:3000" >> $GITHUB_STEP_SUMMARY
