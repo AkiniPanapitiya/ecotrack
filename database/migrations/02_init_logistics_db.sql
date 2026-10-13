@@ -134,3 +134,40 @@ DELIMITER ;
 
 CALL `sp_eco71_add_item_status`();
 DROP PROCEDURE IF EXISTS `sp_eco71_add_item_status`;
+
+-- Drivers Table
+CREATE TABLE IF NOT EXISTS `Drivers` (
+    `Id` VARCHAR(36) NOT NULL PRIMARY KEY,
+    `RecyclerId` VARCHAR(36) NOT NULL,
+    `FullName` VARCHAR(150) NOT NULL,
+    `Phone` VARCHAR(30) NOT NULL,
+    `VehicleNumber` VARCHAR(30) NULL,
+    `IsActive` TINYINT(1) NOT NULL DEFAULT 1,
+    `CreatedAt` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    INDEX `idx_driver_recycler` (`RecyclerId`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Add DriverId to PickupRequests
+DELIMITER $$
+DROP PROCEDURE IF EXISTS `sp_eco136_add_driver_column` $$
+CREATE PROCEDURE `sp_eco136_add_driver_column`()
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'PickupRequests' AND COLUMN_NAME = 'DriverId'
+    ) THEN
+        ALTER TABLE `PickupRequests` ADD COLUMN `DriverId` VARCHAR(36) NULL;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.TABLE_CONSTRAINTS
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'PickupRequests' AND CONSTRAINT_NAME = 'fk_pickup_driver'
+    ) THEN
+        ALTER TABLE `PickupRequests`
+            ADD CONSTRAINT `fk_pickup_driver` FOREIGN KEY (`DriverId`) REFERENCES `Drivers` (`Id`) ON DELETE SET NULL;
+    END IF;
+END $$
+DELIMITER ;
+
+CALL `sp_eco136_add_driver_column`();
+DROP PROCEDURE IF EXISTS `sp_eco136_add_driver_column`;
