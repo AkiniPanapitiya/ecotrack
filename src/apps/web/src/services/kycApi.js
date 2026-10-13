@@ -1,7 +1,8 @@
 import axios from 'axios';
+import { serviceUrl } from './api';
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_IDENTITY_API_URL || 'http://localhost:5001/api',
+  baseURL: import.meta.env.VITE_IDENTITY_API_URL || serviceUrl('identity', 5001, '/api'),
   headers: { 'Content-Type': 'application/json' },
 });
 
@@ -45,7 +46,7 @@ export const getDocumentBlob = (documentId, side = 'front') =>
 // Helper to get direct preview URL with token query parameter
 export const getDocumentUrl = (documentId) => {
   const token = localStorage.getItem('ecotrack_token');
-  const base = import.meta.env.VITE_IDENTITY_API_URL || 'http://localhost:5001/api';
+  const base = import.meta.env.VITE_IDENTITY_API_URL || serviceUrl('identity', 5001, '/api');
   return `${base}/kyc/document/${documentId}${token ? `?token=${encodeURIComponent(token)}` : ''}`;
 };
 

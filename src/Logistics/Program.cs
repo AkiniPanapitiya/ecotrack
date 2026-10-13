@@ -3,12 +3,14 @@ using EcoTrack.LogisticsService.Repositories;
 using EcoTrack.LogisticsService.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using EcoTrack.LogisticsService.Messaging;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add Controllers
 builder.Services.AddControllers();
+builder.Services.AddSingleton<IEventPublisher, KafkaEventPublisher>();
 
 var jwtSettings = builder.Configuration.GetSection("Jwt");
 var secretKey = jwtSettings["SecretKey"] ?? throw new InvalidOperationException("JWT SecretKey is not configured.");

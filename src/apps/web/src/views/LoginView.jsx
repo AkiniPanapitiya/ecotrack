@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Leaf, Lock, Mail, AlertCircle, ArrowRight } from 'lucide-react';
 import { useLocation } from "react-router-dom";
+import { PasswordInput } from '../components/PasswordInput';
 
 export const LoginView = () => {
   const { login } = useAuth();
@@ -91,34 +92,37 @@ export const LoginView = () => {
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label className="form-label">Email Address</label>
+            <label htmlFor="email" className="form-label">Email Address</label>
+            <div className="input-wrapper">
+            <Mail size={18} className="input-icon" />
             <input
+              id="email"
               type="email"
               name="email"
-              className="form-input"
+              className={`form-input has-icon ${errors.email ? 'input-error' : ''}`}
               placeholder="akini@ecotrack.lk"
               value={formData.email}
               onChange={handleChange}
               autoComplete="email"
             />
+            </div>
             {errors.email && <div className="form-error"><AlertCircle size={14} />{errors.email}</div>}
           </div>
 
           <div className="form-group">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-              <label className="form-label" style={{ marginBottom: 0 }}>Password</label>
+              <label htmlFor="password" className="form-label" style={{ marginBottom: 0 }}>Password</label>
               <Link to="/forgot-password" style={{ fontSize: '0.85rem', color: 'var(--primary)', fontWeight: 600 }}>
                 Forgot Password?
               </Link>
             </div>
-            <input
-              type="password"
+            <PasswordInput
+              id="password"
               name="password"
-              className="form-input"
-              placeholder="••••••••"
               value={formData.password}
               onChange={handleChange}
               autoComplete="current-password"
+              hasError={!!errors.password}
             />
             {errors.password && <div className="form-error"><AlertCircle size={14} />{errors.password}</div>}
           </div>

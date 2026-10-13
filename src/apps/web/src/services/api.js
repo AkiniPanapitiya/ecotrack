@@ -7,9 +7,17 @@ const getHost = () => {
   return 'localhost';
 };
 
-const IDENTITY_API_URL = import.meta.env.VITE_IDENTITY_API_URL || `http://${getHost()}:5001/api`;
-const LOGISTICS_API_URL = import.meta.env.VITE_LOGISTICS_API_URL || `http://${getHost()}:5002/api`;
-const MARKETPLACE_API_URL = import.meta.env.VITE_MARKETPLACE_API_URL || `http://${getHost()}:5003/marketplace`;
+const isHttps = () =>
+  typeof window !== 'undefined' && window.location.protocol === 'https:';
+
+export const serviceUrl = (service, port, path) =>
+  isHttps()
+    ? `${window.location.origin}/svc/${service}${path}`
+    : `http://${getHost()}:${port}${path}`;
+
+const IDENTITY_API_URL = import.meta.env.VITE_IDENTITY_API_URL || serviceUrl('identity', 5001, '/api');
+const LOGISTICS_API_URL = import.meta.env.VITE_LOGISTICS_API_URL || serviceUrl('logistics', 5002, '/api');
+const MARKETPLACE_API_URL = import.meta.env.VITE_MARKETPLACE_API_URL || serviceUrl('marketplace', 5003, '/marketplace');
 
 const api = axios.create({
   baseURL: IDENTITY_API_URL,

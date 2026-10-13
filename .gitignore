@@ -436,3 +436,7 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+.gemini/settings.json
+
+# Local-only Docker overrides (never commit)
+docker-compose.override.yml

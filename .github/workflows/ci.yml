@@ -52,24 +52,107 @@ jobs:
           cat TestResults/CoverageReport/Summary.txt
 
       - name: Verify Code Coverage Quality Gate
+        env:
+          MIN_COVERAGE: 20
         run: |
           LINE_COV=$(grep -i "Line coverage:" TestResults/CoverageReport/Summary.txt | head -n 1 | awk '{print $3}' | tr -d '%')
-          echo "Evaluated Line Coverage: ${LINE_COV}%"
-          # Quality Gate verification
+          echo "Line coverage: ${LINE_COV}%  (minimum allowed: ${MIN_COVERAGE}%)"
+
           if [ -z "$LINE_COV" ]; then
-            echo "::error::Failed to parse line coverage metric."
+            echo "::error::Could not read the line coverage number."
             exit 1
           fi
-          echo "Quality Gate check passed: Unit test coverage collected successfully (${LINE_COV}%)."
 
-      - name: Upload test & coverage results
-        uses: actions/upload-artifact@v4
-        if: always()
+          COV_WHOLE=${LINE_COV%.*}
+
+          if [ "$COV_WHOLE" -lt "$MIN_COVERAGE" ]; then
+            echo "::error::Coverage ${LINE_COV}% is below the ${MIN_COVERAGE}% quality gate."
+            exit 1
+          fi
+
+          echo "### ✅ Coverage gate passed: ${LINE_COV}% (minimum ${MIN_COVERAGE}%)" >> $GITHUB_STEP_SUMMARY
+
+  frontend-build:
+    name: Frontend Build (React/Vite)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/apps/web
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
         with:
-          name: test-and-coverage-reports
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: src/apps/web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build production bundle
+        run: npm run build
+  
+  compose-validate:
+    name: Docker Compose Validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate docker-compose.yml syntax
+        run: docker compose config --quiet
+
+      - name: List services that will be started
+        run: docker compose config --services
+  
+  dependency-audit:
+    name: Dependency Vulnerability Audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10.0 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Audit NuGet packages (.NET services)
+        run: |
+          dotnet restore EcoTrack.slnx
+          dotnet list EcoTrack.slnx package --vulnerable --include-transitive > nuget-audit.txt 2>&1
+          cat nuget-audit.txt
+          if grep -q "has the following vulnerable packages" nuget-audit.txt; then
+            echo "::warning::Vulnerable NuGet packages found. See dependency-audit-reports."
+          fi
+
+      - name: Audit npm packages (React frontend)
+        working-directory: src/apps/web
+        run: |
+          if ! npm audit --audit-level=high > npm-audit.txt; then
+            echo "::warning::npm audit found high or critical vulnerabilities. See dependency-audit-reports."
+          fi
+          cat npm-audit.txt
+
+      - name: Upload audit reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-audit-reports
           path: |
-            TestResults/
-            TestResults/CoverageReport/
+            nuget-audit.txt
+            src/apps/web/npm-audit.txt
           retention-days: 7
 
   codeql-analysis:
@@ -113,48 +196,32 @@ jobs:
           category: "/language:${{ matrix.language }}"
 
   docker-build:
-    name: Docker Build Check
+    name: Docker Build (${{ matrix.service }})
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
+    needs: [ build-and-test, frontend-build ]
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: identity
+            dockerfile: src/Identity/Dockerfile
+          - service: logistics
+            dockerfile: src/Logistics/Dockerfile
+          - service: marketplace
+            dockerfile: src/Marketplace/Dockerfile
+          - service: analytics
+            dockerfile: src/Analytics/Dockerfile
+          - service: web
+            dockerfile: src/apps/web/Dockerfile
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Build Analytics Docker image (dev stage)
+      - name: Build full Docker image
         run: |
           docker build \
-            --target build \
-            --tag ecotrack-analytics-ci-check \
-            --file src/Analytics/Dockerfile \
+            --tag ecotrack-${{ matrix.service }}:${{ github.sha }} \
+            --file ${{ matrix.dockerfile }} \
             .
-
-      - name: Build Identity Docker image (dev stage)
-        run: |
-          docker build \
-            --target build \
-            --tag ecotrack-identity-ci-check \
-            --file src/Identity/Dockerfile \
-            .
-
-      - name: Build Logistics Docker image (dev stage)
-        run: |
-          docker build \
-            --target build \
-            --tag ecotrack-logistics-ci-check \
-            --file src/Logistics/Dockerfile \
-            .
-
-      - name: Build Marketplace Docker image (dev stage)
-        run: |
-          docker build \
-            --target build \
-            --tag ecotrack-marketplace-ci-check \
-            --file src/Marketplace/Dockerfile \
-            .
-
-      - name: Clean up Docker images
-        run: |
-          docker rmi ecotrack-analytics-ci-check ecotrack-identity-ci-check \
-            ecotrack-logistics-ci-check ecotrack-marketplace-ci-check \
-            2>/dev/null || true

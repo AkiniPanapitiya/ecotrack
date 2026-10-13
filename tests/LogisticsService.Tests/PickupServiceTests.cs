@@ -2,6 +2,8 @@ using EcoTrack.LogisticsService.DTOs;
 using EcoTrack.LogisticsService.Models;
 using EcoTrack.LogisticsService.Repositories;
 using EcoTrack.LogisticsService.Services;
+using EcoTrack.LogisticsService.Events;
+using EcoTrack.LogisticsService.Messaging;
 using Moq;
 using Xunit;
 
@@ -9,13 +11,15 @@ namespace EcoTrack.LogisticsService.Tests;
 
 public class PickupServiceTests
 {
-    private readonly Mock<IPickupRepository> _pickupRepoMock;
+        private readonly Mock<IPickupRepository> _pickupRepoMock;
+    private readonly Mock<IEventPublisher> _eventPublisherMock;
     private readonly PickupService _pickupService;
 
     public PickupServiceTests()
     {
         _pickupRepoMock = new Mock<IPickupRepository>();
-        _pickupService = new PickupService(_pickupRepoMock.Object);
+        _eventPublisherMock = new Mock<IEventPublisher>();
+        _pickupService = new PickupService(_pickupRepoMock.Object, _eventPublisherMock.Object);
     }
 
     [Fact]
@@ -366,4 +370,36 @@ public class PickupServiceTests
 
         Assert.Empty(result);
     }
+
+        [Fact]
+    public async Task ConfirmScheduleAsync_Success_PublishesPickupScheduledEvent()
+    {
+        var pickupId = Guid.NewGuid();
+        var recyclerId = Guid.NewGuid();
+        var pickup = new PickupRequest { Id = pickupId, UserId = Guid.NewGuid(), Status = "Pending" };
+
+        _pickupRepoMock.Setup(r => r.GetByIdAsync(pickupId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(pickup);
+        _pickupRepoMock.Setup(r => r.HasConflictAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+        _pickupRepoMock.Setup(r => r.ConfirmScheduleAsync(pickupId, recyclerId, It.IsAny<DateTime>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var dto = new ConfirmScheduleRequestDto
+        {
+            RecyclerId = recyclerId,
+            ScheduledDate = DateTime.UtcNow.AddDays(2),
+            ScheduledTimeSlot = "09:00-11:00"
+        };
+
+        var result = await _pickupService.ConfirmScheduleAsync(pickupId, dto);
+
+        Assert.True(result.Success);
+        _eventPublisherMock.Verify(p => p.PublishAsync(
+            PickupScheduledEvent.Topic,
+            pickupId.ToString(),
+            It.IsAny<PickupScheduledEvent>(),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
 }

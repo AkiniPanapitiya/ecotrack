@@ -1,0 +1,8 @@
+**/node_modules
+**/dist
+**/dist_test
+**/bin
+**/obj
+**/.vs
+.git
+coverage
