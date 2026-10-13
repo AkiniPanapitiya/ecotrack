@@ -117,28 +117,26 @@ export const ResetPasswordView = () => {
 
             <div className="form-group">
               <label className="form-label">New Password</label>
-              <input
-                type="password"
-                name="newPassword"
-                className="form-input"
-                placeholder="•••••••• (min 8 chars)"
-                value={formData.newPassword}
+              <PasswordInput
+                id="password"
+                name="password"
+                value={formData.password}
                 onChange={handleChange}
-                autoComplete="new-password"
+                autoComplete="current-password"
+                hasError={!!errors.password}
               />
               {errors.newPassword && <div className="form-error"><AlertCircle size={14} />{errors.newPassword}</div>}
             </div>
 
             <div className="form-group">
               <label className="form-label">Confirm New Password</label>
-              <input
-                type="password"
+              <PasswordInput
+                id="confirmPassword"
                 name="confirmPassword"
-                className="form-input"
-                placeholder="••••••••"
                 value={formData.confirmPassword}
                 onChange={handleChange}
                 autoComplete="new-password"
+                hasError={!!errors.confirmPassword}
               />
               {errors.confirmPassword && <div className="form-error"><AlertCircle size={14} />{errors.confirmPassword}</div>}
             </div>
