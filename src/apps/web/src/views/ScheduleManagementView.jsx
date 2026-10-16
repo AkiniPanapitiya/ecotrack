@@ -4,6 +4,8 @@ import { useAuth } from '../context/AuthContext';
 import { logisticsApi } from '../services/api';
 import { Calendar, Clock, AlertCircle, CheckCircle, Truck, MapPin, Phone, Scale, MessageSquare, PackageCheck, Edit3, Copy, Check, Recycle } from 'lucide-react';
 import { copyTextToClipboard } from '../utils/clipboard';
+import DropoffForm from '../components/DropoffForm';
+import DropoffDetails from '../components/DropoffDetails';
 
 const TIME_SLOTS = [
   'Morning (09:00 - 12:00)',
@@ -27,6 +29,7 @@ export const ScheduleManagementView = () => {
   const [conflictWarning, setConflictWarning] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [copiedId, setCopiedId] = useState(null);
+  const [dropoffOpenId, setDropoffOpenId] = useState(null);
 
   const handleCopyId = async (id) => {
     const ok = await copyTextToClipboard(id);
@@ -104,16 +107,12 @@ export const ScheduleManagementView = () => {
     }
   };
 
-  const handleMarkCollected = async (pickupId) => {
+  // ECO-26: recording a drop-off is what marks a pickup as Collected
+  const handleDropoffRecorded = () => {
     setConflictWarning('');
-    setSuccessMessage('');
-    try {
-      await logisticsApi.markAsCollected(pickupId);
-      setSuccessMessage('Pickup marked as collected.');
-      loadData();
-    } catch (err) {
-      setConflictWarning(err.response?.data?.message || 'Could not mark this pickup as collected.');
-    }
+    setDropoffOpenId(null);
+    setSuccessMessage('Drop-off recorded. Pickup marked as Collected.');
+    loadData();
   };
 
   if (loading) {
@@ -280,8 +279,11 @@ export const ScheduleManagementView = () => {
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                  <button className="btn btn-primary" onClick={() => handleMarkCollected(pickup.id)}>
-                    <PackageCheck size={16} /> Mark as Collected
+                  <button
+                    className="btn btn-primary"
+                    onClick={() => { setSuccessMessage(''); setDropoffOpenId(dropoffOpenId === pickup.id ? null : pickup.id); }}
+                  >
+                    <PackageCheck size={16} /> Record Drop-off
                   </button>
                   <Link to="/valuations" className="btn btn-secondary"
                     style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
@@ -289,6 +291,14 @@ export const ScheduleManagementView = () => {
                   </Link>
                 </div>
               </div>
+
+              {dropoffOpenId === pickup.id && (
+                <DropoffForm
+                  pickupId={pickup.id}
+                  onRecorded={handleDropoffRecorded}
+                  onCancel={() => setDropoffOpenId(null)}
+                />
+              )}
 
               {pickup.items?.length > 0 && (
                 <div style={{ padding: '0.6rem 0.8rem', background: 'rgba(255,255,255,0.02)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
@@ -362,8 +372,9 @@ export const ScheduleManagementView = () => {
               <strong>{pickup.category}</strong> — {pickup.pickupAddress}
               <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '0.25rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <Calendar size={14} />
-                Collected on {new Date(pickup.scheduledDate).toLocaleDateString()} — {pickup.scheduledTimeSlot}
+                Scheduled for {new Date(pickup.scheduledDate).toLocaleDateString()} — {pickup.scheduledTimeSlot}
               </div>
+              <DropoffDetails pickupId={pickup.id} />
 
               {pickup.items?.length > 0 && (
                 <div style={{ marginTop: '0.5rem', padding: '0.5rem 0.75rem', background: 'rgba(255,255,255,0.02)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
@@ -425,4 +436,4 @@ export const ScheduleManagementView = () => {
       )}
     </div>
   );
-};
+};
