@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Leaf, User, Shield, LogOut, FileText, LayoutDashboard, Building2, Truck, PackageSearch, Users, Tag, Plus, Recycle } from 'lucide-react';
+import { Leaf, User, Shield, LogOut, FileText, LayoutDashboard, Building2, Truck, PackageSearch, Users, Tag, Plus, Recycle, Wallet } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export const Navbar = () => {
@@ -70,6 +70,10 @@ export const Navbar = () => {
               <Recycle size={15} />
               <span className="nav-text">Disposal Certification</span>
             </Link>
+            <Link to="/payments" className="nav-link" style={{ display: 'flex', alignItems: 'center', gap: '5px', whiteSpace: 'nowrap' }}>
+              <Wallet size={15} />
+              <span className="nav-text">Payments</span>
+            </Link>
           </>
           )}
 
@@ -86,6 +90,10 @@ export const Navbar = () => {
                 <Link to="/kyc-admin" className="nav-link" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <Shield size={18} />
                   <span>KYC Admin</span>
+                </Link>
+                <Link to="/payments" className="nav-link" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Wallet size={18} />
+                  <span>Payments</span>
                 </Link>
               </>
             )}
