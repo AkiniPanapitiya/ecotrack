@@ -76,9 +76,9 @@ function Format-Debt($minutes) {
 }
 
 # ------------------------------------------------------------------ setup
-Write-Host '============================================================' -ForegroundColor Green
+
 Write-Host '  EcoTrack - Code Quality & Metrics Pipeline (SE3112)' -ForegroundColor Green
-Write-Host '============================================================' -ForegroundColor Green
+
 
 if (Test-Path $out) { Remove-Item $out -Recurse -Force }
 New-Item -ItemType Directory -Path $sarifDir -Force | Out-Null
