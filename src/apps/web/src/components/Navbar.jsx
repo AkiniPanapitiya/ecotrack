@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Leaf, User, Shield, LogOut, FileText, LayoutDashboard, Building2, Truck, PackageSearch, Users, Tag, Plus, Recycle, Wallet } from 'lucide-react';
+import { Leaf, User, Shield, LogOut, FileText, LayoutDashboard, Building2, Truck, PackageSearch, Users, Tag, Plus, Recycle, Wallet, TrendingUp } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export const Navbar = () => {
@@ -74,6 +74,10 @@ export const Navbar = () => {
               <Wallet size={15} />
               <span className="nav-text">Payments</span>
             </Link>
+            <Link to="/sales-report" className="nav-link" style={{ display: 'flex', alignItems: 'center', gap: '5px', whiteSpace: 'nowrap' }}>
+              <TrendingUp size={15} />
+              <span className="nav-text">Sales Report</span>
+            </Link>
           </>
           )}
 
@@ -94,6 +98,10 @@ export const Navbar = () => {
                 <Link to="/payments" className="nav-link" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <Wallet size={18} />
                   <span>Payments</span>
+                </Link>
+                <Link to="/sales-report" className="nav-link" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <TrendingUp size={18} />
+                  <span>Sales Report</span>
                 </Link>
               </>
             )}
