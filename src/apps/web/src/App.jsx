@@ -25,6 +25,7 @@ import CreateListingView from './views/CreateListingView';
 import MyOrdersView from './views/MyOrdersView';
 import DisposalCertificationView from './views/DisposalCertificationView';
 import PaymentRecordsView from './views/PaymentRecordsView';
+import SalesReportView from './views/SalesReportView';
 
 const HomeRedirect = () => {
   const { isAuthenticated } = useAuth();
@@ -58,6 +59,7 @@ export const App = () => {
                   <Route path="/create-listing" element={<ProtectedRoute rolesAllowed={['Recycler']}><CreateListingView /></ProtectedRoute>} />
                   <Route path="/my-orders" element={<ProtectedRoute rolesAllowed={['User']}><MyOrdersView /></ProtectedRoute>} />
                   <Route path="/payments" element={<ProtectedRoute rolesAllowed={['Recycler', 'Admin']}><PaymentRecordsView /></ProtectedRoute>} />
+                  <Route path="/sales-report" element={<ProtectedRoute rolesAllowed={['Recycler', 'Admin']}><SalesReportView /></ProtectedRoute>} />
                   <Route path="/disposal-certification" element={<ProtectedRoute rolesAllowed={['Recycler', 'User']}><DisposalCertificationView /></ProtectedRoute>} />
                   <Route path="/" element={<HomeRedirect />} />
             </Routes>

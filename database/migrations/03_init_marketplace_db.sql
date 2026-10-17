@@ -110,3 +110,40 @@ SELECT UUID(), o.`Id`, o.`BuyerId`, l.`RecyclerId`, o.`PriceAtPurchase`, 'Pendin
 FROM `Orders` o
 INNER JOIN `Listings` l ON l.`Id` = o.`ListingId`
 WHERE NOT EXISTS (SELECT 1 FROM `PaymentRecords` p WHERE p.`OrderId` = o.`Id`);
+
+-- 5. Sales Report View
+-- Story 21: Sales, Inventory & Revenue Report (E6.3)
+-- One row per (non-deleted) listing, with its category and, when sold,
+-- its order and payment record. The report API aggregates this view.
+-- Category  -> PickupRequests.Category in ecotrack_logistics_db
+--              (Listing -> ItemValuation -> PickupItem -> PickupRequest)
+-- Data definitions used by the report:
+--   Total sales  = orders that are not Cancelled, by order date
+--   Sales value  = sum of PriceAtPurchase for those orders
+--   Revenue      = sum of payment Amount where payment Status = 'Paid'
+--   Pending      = sum of payment Amount where payment Status = 'Pending'
+--   Refunded     = sum of payment Amount where payment Status = 'Refunded'
+--   Inventory    = current listing count by Status (Available = in stock)
+-- Re-runnable: CREATE OR REPLACE keeps the view in sync with this script.
+CREATE OR REPLACE VIEW `vw_SalesReportItems` AS
+SELECT
+    l.`Id` AS `ListingId`,
+    l.`RecyclerId`,
+    l.`Title`,
+    l.`Price` AS `ListingPrice`,
+    l.`Status` AS `ListingStatus`,
+    l.`CreatedAt` AS `ListedAt`,
+    COALESCE(NULLIF(TRIM(pr.`Category`), ''), 'Uncategorised') AS `Category`,
+    o.`Id` AS `OrderId`,
+    o.`Status` AS `OrderStatus`,
+    o.`PriceAtPurchase`,
+    o.`CreatedAt` AS `OrderedAt`,
+    p.`Status` AS `PaymentStatus`,
+    p.`Amount` AS `PaymentAmount`
+FROM `Listings` l
+INNER JOIN `ItemValuations` v ON v.`Id` = l.`ValuationId`
+LEFT JOIN `ecotrack_logistics_db`.`PickupItems` pi ON pi.`Id` = v.`PickupItemId`
+LEFT JOIN `ecotrack_logistics_db`.`PickupRequests` pr ON pr.`Id` = pi.`PickupRequestId`
+LEFT JOIN `Orders` o ON o.`ListingId` = l.`Id`
+LEFT JOIN `PaymentRecords` p ON p.`OrderId` = o.`Id`
+WHERE l.`IsDeleted` = 0;
