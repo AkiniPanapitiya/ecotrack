@@ -1,0 +1,24 @@
+{
+  "coverage": {
+    "minLineCoverage": 20,
+    "minBranchCoverage": 5
+  },
+  "staticAnalysis": {
+    "maxWarnings": 45,
+    "failOnFormatting": false
+  },
+  "sonar": {
+    "projectKey": "ecotrack",
+    "projectName": "EcoTrack",
+    "gateName": "EcoTrack Gate",
+    "conditions": [
+      { "metric": "coverage",                        "op": "LT", "error": "20" },
+      { "metric": "duplicated_lines_density",        "op": "GT", "error": "5" },
+      { "metric": "sqale_rating",                    "op": "GT", "error": "2" },
+      { "metric": "new_coverage",                    "op": "LT", "error": "80" },
+      { "metric": "new_duplicated_lines_density",    "op": "GT", "error": "3" },
+      { "metric": "new_violations",                  "op": "GT", "error": "0" },
+      { "metric": "new_security_hotspots_reviewed",  "op": "LT", "error": "100" }
+    ]
+  }
+}
