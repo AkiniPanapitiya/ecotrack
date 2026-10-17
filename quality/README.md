@@ -1,7 +1,7 @@
 # Code Quality & Metrics (SE3112)
 
-**Owner:** Rajapaksha R M M D C (Diloosha) — IT24610798
-**Role:** Code Quality & Metrics — automated static analysis, coverage metrics and a quality gate for the EcoTrack microservices.
+Owner: Rajapaksha R M M D C (Diloosha) — IT24610798
+Role: Code Quality & Metrics — automated static analysis, coverage metrics and a quality gate for the EcoTrack microservices.
 
 ## Tools and why
 
