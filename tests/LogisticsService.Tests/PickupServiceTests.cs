@@ -402,4 +402,146 @@ public class PickupServiceTests
             It.IsAny<CancellationToken>()), Times.Once);
     }
 
+    // ── Advanced SE3112 Parameterized Theories & Edge Cases ──────────
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    [InlineData(-25.5)]
+    [InlineData(10000.01)]
+    [InlineData(25000)]
+    public async Task CreatePickupRequestAsync_InvalidWeights_Returns400BadRequest(decimal invalidWeight)
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var dto = new CreatePickupRequestDto
+        {
+            Category = "Electronic Appliances",
+            EstimatedWeightKg = invalidWeight,
+            PickupAddress = "No 50, Baseline Road, Colombo",
+            ContactPhone = "+94771234567",
+            PreferredDate = DateTime.UtcNow.AddDays(2).Date,
+            TimeSlot = "Morning (09:00 - 12:00)"
+        };
+
+        // Act
+        var (success, statusCode, message, data) = await _pickupService.CreatePickupRequestAsync(userId, dto);
+
+        // Assert
+        Assert.False(success);
+        Assert.Equal(400, statusCode);
+        Assert.Equal("Estimated weight must be between 0.1 kg and 10,000 kg.", message);
+        Assert.Null(data);
+
+        // Verify behavioral isolation: no repository writes were attempted
+        _pickupRepoMock.Verify(r => r.CreatePickupAsync(It.IsAny<PickupRequest>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task CreatePickupRequestAsync_InvalidPickupAddresses_Returns400BadRequest(string? invalidAddress)
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var dto = new CreatePickupRequestDto
+        {
+            Category = "Electronic Appliances",
+            EstimatedWeightKg = 15m,
+            PickupAddress = invalidAddress!,
+            ContactPhone = "+94771234567",
+            PreferredDate = DateTime.UtcNow.AddDays(2).Date,
+            TimeSlot = "Morning (09:00 - 12:00)"
+        };
+
+        // Act
+        var (success, statusCode, message, data) = await _pickupService.CreatePickupRequestAsync(userId, dto);
+
+        // Assert
+        Assert.False(success);
+        Assert.Equal(400, statusCode);
+        Assert.Equal("Pickup address is required.", message);
+        Assert.Null(data);
+
+        _pickupRepoMock.Verify(r => r.CreatePickupAsync(It.IsAny<PickupRequest>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task CreatePickupRequestAsync_PastPreferredDate_Returns400BadRequest()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var dto = new CreatePickupRequestDto
+        {
+            Category = "Electronic Appliances",
+            EstimatedWeightKg = 15m,
+            PickupAddress = "No 50, Baseline Road, Colombo",
+            ContactPhone = "+94771234567",
+            PreferredDate = DateTime.UtcNow.AddDays(-2).Date, // Past date
+            TimeSlot = "Morning (09:00 - 12:00)"
+        };
+
+        // Act
+        var (success, statusCode, message, data) = await _pickupService.CreatePickupRequestAsync(userId, dto);
+
+        // Assert
+        Assert.False(success);
+        Assert.Equal(400, statusCode);
+        Assert.Equal("Preferred pickup date cannot be in the past.", message);
+        Assert.Null(data);
+
+        _pickupRepoMock.Verify(r => r.CreatePickupAsync(It.IsAny<PickupRequest>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task CreatePickupRequestAsync_RepositoryFails_Returns500InternalServerError()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var dto = new CreatePickupRequestDto
+        {
+            Category = "Computing & Laptops",
+            EstimatedWeightKg = 10m,
+            PickupAddress = "No 10, Station Road, Colombo",
+            ContactPhone = "+94771234567",
+            PreferredDate = DateTime.UtcNow.AddDays(1).Date,
+            TimeSlot = "Afternoon (13:00 - 16:00)"
+        };
+
+        _pickupRepoMock.Setup(r => r.CreatePickupAsync(It.IsAny<PickupRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false); // Simulate DB failure
+
+        // Act
+        var (success, statusCode, message, data) = await _pickupService.CreatePickupRequestAsync(userId, dto);
+
+        // Assert
+        Assert.False(success);
+        Assert.Equal(500, statusCode);
+        Assert.Equal("Failed to schedule pickup request.", message);
+        Assert.Null(data);
+    }
+
+    [Fact]
+    public async Task CreatePickupRequestAsync_RepositoryThrowsException_PropagatesFault()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var dto = new CreatePickupRequestDto
+        {
+            Category = "Computing & Laptops",
+            EstimatedWeightKg = 10m,
+            PickupAddress = "No 10, Station Road, Colombo",
+            ContactPhone = "+94771234567",
+            PreferredDate = DateTime.UtcNow.AddDays(1).Date,
+            TimeSlot = "Afternoon (13:00 - 16:00)"
+        };
+
+        _pickupRepoMock.Setup(r => r.CreatePickupAsync(It.IsAny<PickupRequest>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("Database connection terminated"));
+
+        // Act & Assert
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            _pickupService.CreatePickupRequestAsync(userId, dto));
+    }
 }
