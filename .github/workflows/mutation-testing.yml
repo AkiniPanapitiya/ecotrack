@@ -1,0 +1,43 @@
+name: Mutation Testing
+
+on:
+  push:
+    branches: [ "Dev", "main", "Deploy" ]
+  pull_request:
+    branches: [ "Dev", "main" ]
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mutation-testing-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  mutation-testing:
+    name: Stryker.NET Mutation Testing
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10.0 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Run mutation testing pipeline
+        shell: pwsh
+        run: ./mutation/run-mutation.ps1
+
+      - name: Upload mutation reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stryker-mutation-report
+          path: tests/IdentityService.Tests/StrykerOutput/**/reports/
+          retention-days: 14

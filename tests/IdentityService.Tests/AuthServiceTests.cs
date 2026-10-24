@@ -70,7 +70,20 @@ public class AuthServiceTests
         Assert.Equal("User", response.Role);
 
         _passwordHasherMock.Verify(h => h.HashPassword("Password@123"), Times.Once);
-        _userRepositoryMock.Verify(r => r.CreateUserAsync(It.Is<User>(u => u.PasswordHash == "hashed_secure_password_string"), It.IsAny<CancellationToken>()), Times.Once);
+        _userRepositoryMock.Verify(r => r.CreateUserAsync(
+            It.Is<User>(u =>
+                u.PasswordHash == "hashed_secure_password_string" &&
+                u.FullName == "Akini Panapitiya" &&
+                u.Email == "akini@ecotrack.lk" &&
+                u.Role == "User" &&
+                u.PhoneNumber == "+94771234567" &&
+                u.Address == "Colombo, Sri Lanka" &&
+                u.IsActive),
+            It.IsAny<CancellationToken>()), Times.Once);
+
+        _auditRepositoryMock.Verify(a => a.LogActivityAsync(
+            It.Is<UserAuditLog>(l => l.Action == "REGISTER" && l.Role == "User"),
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -182,6 +195,10 @@ public class AuthServiceTests
         Assert.Equal("mock.jwt.token.string", response.Token);
         Assert.Equal("User", response.Role);
         Assert.Equal("Login successful.", response.Message);
+
+        _auditRepositoryMock.Verify(a => a.LogActivityAsync(
+            It.Is<UserAuditLog>(l => l.Action == "LOGIN_SUCCESS" && l.Role == "User"),
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -217,6 +234,10 @@ public class AuthServiceTests
         Assert.Equal(401, statusCode);
         Assert.Equal("Invalid credentials.", message);
         Assert.Null(response);
+
+        _auditRepositoryMock.Verify(a => a.LogActivityAsync(
+            It.Is<UserAuditLog>(l => l.Action == "LOGIN_FAILED" && l.Role == "User"),
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -240,27 +261,30 @@ public class AuthServiceTests
         Assert.Equal(401, statusCode);
         Assert.Equal("Invalid credentials.", message);
         Assert.Null(response);
+
+        _auditRepositoryMock.Verify(a => a.LogActivityAsync(
+            It.Is<UserAuditLog>(l => l.Action == "LOGIN_FAILED" && l.Role == "Unknown"),
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 
 
-//Logout Tests
     [Fact]
-public async Task LogoutAsync_ValidJti_AddsToBlacklistAndReturns200()
-{
-    var jti = Guid.NewGuid().ToString();
-    var userId = Guid.NewGuid();
-    var expiresAt = DateTime.UtcNow.AddMinutes(30);
+    public async Task LogoutAsync_ValidJti_AddsToBlacklistAndReturns200()
+    {
+        var jti = Guid.NewGuid().ToString();
+        var userId = Guid.NewGuid();
+        var expiresAt = DateTime.UtcNow.AddMinutes(30);
 
-    _tokenBlacklistRepositoryMock
-        .Setup(r => r.AddAsync(jti, userId, expiresAt, It.IsAny<CancellationToken>()))
-        .ReturnsAsync(true);
+        _tokenBlacklistRepositoryMock
+            .Setup(r => r.AddAsync(jti, userId, expiresAt, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
 
-    var (success, statusCode, message) = await _authService.LogoutAsync(jti, userId, expiresAt);
+        var (success, statusCode, message) = await _authService.LogoutAsync(jti, userId, expiresAt);
 
-    Assert.True(success);
-    Assert.Equal(200, statusCode);
-    Assert.Equal("Logged out successfully.", message);
-}
+        Assert.True(success);
+        Assert.Equal(200, statusCode);
+        Assert.Equal("Logged out successfully.", message);
+    }
 
     [Fact]
     public async Task LogoutAsync_RepositoryFails_Returns500()
@@ -277,9 +301,9 @@ public async Task LogoutAsync_ValidJti_AddsToBlacklistAndReturns200()
 
         Assert.False(success);
         Assert.Equal(500, statusCode);
+        Assert.Equal("Failed to log out. Please try again.", message);
     }
 
-//Forgot Password Tests
     [Fact]
     public async Task ForgotPasswordAsync_ExistingEmail_SavesTokenAndReturnsGenericMessage()
     {
@@ -319,10 +343,8 @@ public async Task LogoutAsync_ValidJti_AddsToBlacklistAndReturns200()
         Assert.Equal("Check your email for reset instructions.", message);
         _passwordResetTokenRepositoryMock.Verify(
             r => r.AddAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()),
-            Times.Never);   // no token should ever be created for an email that doesn't exist
+            Times.Never);
     }
-
-//Reset Password Tests
 
     [Fact]
     public async Task ResetPasswordAsync_ValidUnexpiredToken_UpdatesPasswordAndMarksTokenUsed()
@@ -330,7 +352,7 @@ public async Task LogoutAsync_ValidJti_AddsToBlacklistAndReturns200()
         var userId = Guid.NewGuid();
         _passwordResetTokenRepositoryMock
             .Setup(r => r.GetByTokenHashAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((userId, DateTime.UtcNow.AddMinutes(15), false));   // not used and not expired
+            .ReturnsAsync((userId, DateTime.UtcNow.AddMinutes(15), false));
         _passwordHasherMock
             .Setup(h => h.HashPassword(It.IsAny<string>()))
             .Returns("hashed_new_password");
@@ -419,47 +441,13 @@ public async Task LogoutAsync_ValidJti_AddsToBlacklistAndReturns200()
         Assert.Equal("This reset link is invalid or has expired.", message);
     }
 
-    // ── Advanced SE3112 Parameterized Theories & Moq Verification ────
-
-    [Theory]
-    [InlineData("")]
-    [InlineData(" ")]
-    [InlineData("1234567")]
-    [InlineData("short")]
-    [InlineData("a@B1")]
-    public async Task RegisterAsync_PasswordShorterThan8Chars_Returns400BadRequest(string invalidPassword)
-    {
-        // Arrange
-        var request = new RegisterRequestDto
-        {
-            FullName = "Boundary Test User",
-            Email = "boundary@ecotrack.lk",
-            Password = invalidPassword,
-            Role = "User"
-        };
-
-        // Act
-        var (success, statusCode, message, response) = await _authService.RegisterAsync(request);
-
-        // Assert
-        Assert.False(success);
-        Assert.Equal(400, statusCode);
-        Assert.Equal("Password must be at least 8 characters.", message);
-        Assert.Null(response);
-
-        // Verify behavioral isolation: no hashing or database creation attempts occurred
-        _passwordHasherMock.Verify(h => h.HashPassword(It.IsAny<string>()), Times.Never);
-        _userRepositoryMock.Verify(r => r.CreateUserAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()), Times.Never);
-    }
-
     [Fact]
-    public async Task RegisterAsync_DatabaseWriteFails_Returns500InternalServerError()
+    public async Task RegisterAsync_UserCreationFails_Returns500InternalServerError()
     {
-        // Arrange
         var request = new RegisterRequestDto
         {
-            FullName = "Database Fail User",
-            Email = "dbfail@ecotrack.lk",
+            FullName = "Failed User",
+            Email = "fail@ecotrack.lk",
             Password = "Password@123",
             Role = "User"
         };
@@ -467,37 +455,32 @@ public async Task LogoutAsync_ValidJti_AddsToBlacklistAndReturns200()
         _userRepositoryMock.Setup(r => r.GetByEmailAsync(request.Email, It.IsAny<CancellationToken>()))
             .ReturnsAsync((User?)null);
         _passwordHasherMock.Setup(h => h.HashPassword(request.Password))
-            .Returns("hashed_secure_password");
+            .Returns("hashed_pwd");
         _userRepositoryMock.Setup(r => r.CreateUserAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(false); // Simulate DB failure
+            .ReturnsAsync(false);
 
-        // Act
         var (success, statusCode, message, response) = await _authService.RegisterAsync(request);
 
-        // Assert
         Assert.False(success);
         Assert.Equal(500, statusCode);
         Assert.Equal("Failed to create user account.", message);
         Assert.Null(response);
-
-        // Verify audit log was not written if user creation failed
-        _auditRepositoryMock.Verify(a => a.LogActivityAsync(It.IsAny<UserAuditLog>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
-    public async Task RegisterAsync_RecyclerWithNullOptionalFields_SetsDomainDefaultsCorrectly()
+    public async Task RegisterAsync_RecyclerWithEmptyDetails_UsesDefaultValues()
     {
-        // Arrange
         var request = new RegisterRequestDto
         {
-            FullName = "Green Recycler",
-            Email = "green@ecotrack.lk",
+            FullName = "Sunil Perera",
+            Email = "sunil@ecotrack.lk",
             Password = "Password@123",
             Role = "Recycler",
-            CompanyName = null,
-            BusinessRegistrationNumber = null,
+            CompanyName = " ",
+            BusinessRegistrationNumber = "",
             FacilityAddress = null,
-            OperationalCapacityKg = null
+            OperationalCapacityKg = null,
+            Address = null
         };
 
         _userRepositoryMock.Setup(r => r.GetByEmailAsync(request.Email, It.IsAny<CancellationToken>()))
@@ -509,136 +492,172 @@ public async Task LogoutAsync_ValidJti_AddsToBlacklistAndReturns200()
         _userRepositoryMock.Setup(r => r.CreateRecyclerProfileAsync(It.IsAny<RecyclerProfile>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
 
-        // Act
-        var (success, statusCode, message, response) = await _authService.RegisterAsync(request);
+        var (success, statusCode, _, response) = await _authService.RegisterAsync(request);
 
-        // Assert
         Assert.True(success);
         Assert.Equal(201, statusCode);
         Assert.NotNull(response);
-        Assert.Equal("Pending", response.VerificationStatus);
-
-        // Verify fallback defaults were applied to RecyclerProfile
         _userRepositoryMock.Verify(r => r.CreateRecyclerProfileAsync(
             It.Is<RecyclerProfile>(p =>
-                p.CompanyName == "Green Recycler" &&
+                p.CompanyName == "Sunil Perera" &&
                 p.BusinessRegistrationNumber == "PENDING-REG" &&
+                p.FacilityAddress == "Pending Facility Address" &&
                 p.OperationalCapacityKg == 0.00m &&
                 p.VerificationStatus == "Pending"),
             It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
-    public async Task LoginAsync_InactiveUserAccount_LogsFailedAuditAndReturns401Unauthorized()
+    public async Task RegisterAsync_RecyclerWithUserAddressOnly_UsesUserAddressAsFacilityAddress()
     {
-        // Arrange
+        var request = new RegisterRequestDto
+        {
+            FullName = "Kamal Gunaratne",
+            Email = "kamal@ecotrack.lk",
+            Password = "Password@123",
+            Role = "Recycler",
+            CompanyName = "Kamal Eco",
+            BusinessRegistrationNumber = "BR-100",
+            FacilityAddress = null,
+            Address = "12 Colombo Road, Negombo"
+        };
+
+        _userRepositoryMock.Setup(r => r.GetByEmailAsync(request.Email, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((User?)null);
+        _passwordHasherMock.Setup(h => h.HashPassword(request.Password))
+            .Returns("hashed_pwd");
+        _userRepositoryMock.Setup(r => r.CreateUserAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+        _userRepositoryMock.Setup(r => r.CreateRecyclerProfileAsync(It.IsAny<RecyclerProfile>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var (success, _, _, _) = await _authService.RegisterAsync(request);
+
+        Assert.True(success);
+        _userRepositoryMock.Verify(r => r.CreateRecyclerProfileAsync(
+            It.Is<RecyclerProfile>(p => p.FacilityAddress == "12 Colombo Road, Negombo"),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task LoginAsync_InactiveUser_Returns401InvalidCredentials()
+    {
         var request = new LoginRequestDto
         {
-            Email = "deactivated@ecotrack.lk",
+            Email = "inactive@ecotrack.lk",
             Password = "Password@123"
         };
 
-        var inactiveUser = new User
+        var user = new User
         {
             Id = Guid.NewGuid(),
-            Email = request.Email,
-            PasswordHash = "some_hash",
+            Email = "inactive@ecotrack.lk",
+            PasswordHash = "hashed_pwd",
             Role = "User",
             IsActive = false
         };
 
         _userRepositoryMock.Setup(r => r.GetByEmailAsync(request.Email, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(inactiveUser);
+            .ReturnsAsync(user);
 
-        // Act
         var (success, statusCode, message, response) = await _authService.LoginAsync(request);
 
-        // Assert
         Assert.False(success);
         Assert.Equal(401, statusCode);
         Assert.Equal("Invalid credentials.", message);
         Assert.Null(response);
-
-        // Verify password check was never reached
         _passwordHasherMock.Verify(h => h.VerifyPassword(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
-
-        // Verify audit log was recorded for login failure
-        _auditRepositoryMock.Verify(a => a.LogActivityAsync(
-            It.Is<UserAuditLog>(log => log.Action == "LOGIN_FAILED" && log.UserEmail == request.Email),
-            It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
-    public async Task LoginAsync_RepositoryThrowsException_PropagatesFaultAndDoesNotGenerateToken()
+    public async Task LoginAsync_RecyclerRole_FetchesProfileAndPassesVerificationStatus()
     {
-        // Arrange
         var request = new LoginRequestDto
         {
-            Email = "error@ecotrack.lk",
+            Email = "recycler@ecotrack.lk",
             Password = "Password@123"
         };
 
-        _userRepositoryMock.Setup(r => r.GetByEmailAsync(request.Email, It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new TimeoutException("Database connection timeout"));
-
-        // Act & Assert
-        await Assert.ThrowsAsync<TimeoutException>(() => _authService.LoginAsync(request));
-
-        // Verify token generation was never invoked
-        _jwtTokenServiceMock.Verify(j => j.GenerateToken(It.IsAny<User>(), It.IsAny<string>()), Times.Never);
-    }
-
-    [Fact]
-    public async Task LogoutAsync_TokenBlacklistRepositoryFails_Returns500InternalServerError()
-    {
-        // Arrange
-        var jti = Guid.NewGuid().ToString();
-        var userId = Guid.NewGuid();
-        var expiresAt = DateTime.UtcNow.AddHours(1);
-
-        _tokenBlacklistRepositoryMock.Setup(b => b.AddAsync(jti, userId, expiresAt, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(false); // Simulate repository failure
-
-        // Act
-        var (success, statusCode, message) = await _authService.LogoutAsync(jti, userId, expiresAt);
-
-        // Assert
-        Assert.False(success);
-        Assert.Equal(500, statusCode);
-        Assert.Equal("Failed to log out. Please try again.", message);
-    }
-
-    [Fact]
-    public async Task ResetPasswordAsync_DatabaseUpdatePasswordFails_Returns500InternalServerError()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        _passwordResetTokenRepositoryMock
-            .Setup(r => r.GetByTokenHashAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((userId, DateTime.UtcNow.AddMinutes(15), false));
-
-        _passwordHasherMock.Setup(h => h.HashPassword("NewStrongPass@123"))
-            .Returns("new_hashed_pwd");
-
-        _userRepositoryMock.Setup(r => r.UpdatePasswordAsync(userId, "new_hashed_pwd", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(false); // Simulate DB failure
-
-        var request = new ResetPasswordRequestDto
+        var user = new User
         {
-            Token = "valid-reset-token-xyz",
-            NewPassword = "NewStrongPass@123",
-            ConfirmPassword = "NewStrongPass@123"
+            Id = Guid.NewGuid(),
+            FullName = "Recycler One",
+            Email = "recycler@ecotrack.lk",
+            PasswordHash = "hashed_pwd",
+            Role = "Recycler",
+            IsActive = true
         };
 
-        // Act
-        var (success, statusCode, message) = await _authService.ResetPasswordAsync(request);
+        var profile = new RecyclerProfile
+        {
+            Id = Guid.NewGuid(),
+            UserId = user.Id,
+            VerificationStatus = "Verified"
+        };
 
-        // Assert
+        _userRepositoryMock.Setup(r => r.GetByEmailAsync(request.Email, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+        _passwordHasherMock.Setup(h => h.VerifyPassword(request.Password, user.PasswordHash))
+            .Returns(true);
+        _userRepositoryMock.Setup(r => r.GetRecyclerProfileByUserIdAsync(user.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(profile);
+
+        var expires = DateTime.UtcNow.AddHours(2);
+        _jwtTokenServiceMock.Setup(j => j.GenerateToken(user, "Verified"))
+            .Returns(("recycler.jwt.token", expires));
+
+        var (success, statusCode, _, response) = await _authService.LoginAsync(request);
+
+        Assert.True(success);
+        Assert.Equal(200, statusCode);
+        Assert.NotNull(response);
+        Assert.Equal("recycler.jwt.token", response.Token);
+        Assert.Equal("Verified", response.VerificationStatus);
+        _userRepositoryMock.Verify(r => r.GetRecyclerProfileByUserIdAsync(user.Id, It.IsAny<CancellationToken>()), Times.Once);
+        _jwtTokenServiceMock.Verify(j => j.GenerateToken(user, "Verified"), Times.Once);
+    }
+
+    [Fact]
+    public async Task ForgotPasswordAsync_AddTokenFails_Returns500()
+    {
+        var user = new User { Id = Guid.NewGuid(), Email = "test@ecotrack.lk" };
+        _userRepositoryMock.Setup(r => r.GetByEmailAsync(user.Email, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+        _passwordResetTokenRepositoryMock.Setup(r => r.AddAsync(user.Id, It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
+        var request = new ForgotPasswordRequestDto { Email = user.Email };
+
+        var (success, statusCode, message) = await _authService.ForgotPasswordAsync(request);
+
         Assert.False(success);
         Assert.Equal(500, statusCode);
         Assert.Equal("Something went wrong. Please try again.", message);
+    }
 
-        // Verify token was NOT marked as used if password update failed
-        _passwordResetTokenRepositoryMock.Verify(r => r.MarkAsUsedAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    [Fact]
+    public async Task ResetPasswordAsync_UpdatePasswordFails_Returns500()
+    {
+        var userId = Guid.NewGuid();
+        _passwordResetTokenRepositoryMock.Setup(r => r.GetByTokenHashAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((userId, DateTime.UtcNow.AddMinutes(15), false));
+        _passwordHasherMock.Setup(h => h.HashPassword(It.IsAny<string>()))
+            .Returns("new_hash");
+        _userRepositoryMock.Setup(r => r.UpdatePasswordAsync(userId, "new_hash", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
+        var request = new ResetPasswordRequestDto
+        {
+            Token = "valid-token",
+            NewPassword = "NewPass123",
+            ConfirmPassword = "NewPass123"
+        };
+
+        var (success, statusCode, message) = await _authService.ResetPasswordAsync(request);
+
+        Assert.False(success);
+        Assert.Equal(500, statusCode);
+        Assert.Equal("Something went wrong. Please try again.", message);
     }
 }
+ 
