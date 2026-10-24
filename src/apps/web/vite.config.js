@@ -23,6 +23,14 @@ export default defineConfig({
         target: 'http://localhost:5003',
         changeOrigin: true,
       },
+      '/api/payments': {
+        target: 'http://localhost:5003',
+        changeOrigin: true,
+      },
+      '/api/reports': {
+        target: 'http://localhost:5003',
+        changeOrigin: true,
+      },
       '/api': {
         target: 'http://localhost:5002',
         changeOrigin: true,
