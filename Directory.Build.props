@@ -1,0 +1,26 @@
+<Project>
+
+  <!--
+    SE3112 Code Quality & Metrics
+    Applied automatically to every .csproj under this folder (all 4 services + all test projects).
+    Turns on the built-in Roslyn (.NET) analyzers so static analysis runs on every build,
+    locally and in GitHub Actions, without adding any NuGet packages.
+  -->
+  <PropertyGroup>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisLevel>latest</AnalysisLevel>
+    <AnalysisMode>Recommended</AnalysisMode>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <!--
+    Only when run-code-quality.ps1 builds with -p:EcoQualitySarif=true:
+    each project writes its analyzer findings to quality-reports/sarif/<Project>.sarif
+    (SARIF = the standard JSON format for static analysis results).
+  -->
+  <PropertyGroup Condition="'$(EcoQualitySarif)' == 'true'">
+    <ErrorLog>$(MSBuildThisFileDirectory)quality-reports/sarif/$(MSBuildProjectName).sarif,version=2.1</ErrorLog>
+  </PropertyGroup>
+
+</Project>

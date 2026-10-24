@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Package, Clock, CheckCircle2, AlertCircle, X as XIcon, ChevronLeft, ChevronRight } from 'lucide-react';
+import { PaymentStatusBadge } from '../components/PaymentStatusBadge';
 
 const PAGE_SIZE = 10;
 
@@ -163,10 +164,13 @@ function MyOrdersView() {
                       </h3>
                       {getStatusBadge(order.status)}
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.5rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.5rem' }}>
                       <span style={{ fontWeight: 700, color: 'var(--accent)', fontSize: '0.95rem' }}>
                         {formatPrice(order.priceAtPurchase)}
                       </span>
+                      {order.paymentStatus && (
+                        <PaymentStatusBadge status={order.paymentStatus} prefix="Payment: " />
+                      )}
                     </div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                       <Clock size={12} />
