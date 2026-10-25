@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import DropoffDetails from './DropoffDetails';
 
 const statusStyles = {
   Requested: { background: 'var(--warning-bg)', color: '#fbbf24', border: '1px solid rgba(245, 158, 11, 0.3)' },
@@ -92,6 +93,8 @@ function PickupCard({ pickup, onCancel, onReschedule }) {
           </div>
         )}
       </div>
+
+      {pickup.status === 'Collected' && <DropoffDetails pickupId={pickup.id} />}
 
       {showDateInput && (
         <div style={{ marginTop: '1rem', display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
