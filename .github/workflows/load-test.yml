@@ -1,4 +1,4 @@
-name: Load & Performance Testing (k6)
+- name: Run k6 load testname: Load & Performance Testing (k6)
 
 on:
   push:
@@ -52,7 +52,7 @@ jobs:
         uses: grafana/setup-k6-action@v1
 
       - name: Run k6 load test
-        run: ./tests/load/run-load-test.sh "$PROFILE"
+        run: bash ./tests/load/run-load-test.sh "$PROFILE"
 
       - name: Publish results to job summary
         if: always()
