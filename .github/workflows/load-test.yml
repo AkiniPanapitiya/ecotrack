@@ -1,0 +1,90 @@
+- name: Run k6 load testname: Load & Performance Testing (k6)
+
+on:
+  push:
+    branches: [ "Dev", "main" ]
+  pull_request:
+    branches: [ "Dev", "main" ]
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: 'k6 load profile'
+        type: choice
+        options: [ smoke, load, stress, spike ]
+        default: smoke
+  workflow_call:
+    inputs:
+      profile:
+        type: string
+        default: smoke
+
+permissions:
+  contents: read
+
+concurrency:
+  group: load-test-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  k6-load-test:
+    name: k6 ${{ inputs.profile || 'smoke' }} test (Identity, Logistics, Marketplace)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      PROFILE: ${{ inputs.profile || 'smoke' }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Start microservices stack (Docker Compose)
+        run: docker compose up -d --build db kafka kafka-init identity logistics marketplace
+
+      - name: Wait for MySQL migrations
+        run: |
+          for i in $(seq 1 60); do
+            [ "$(docker inspect -f '{{.State.Health.Status}}' ecotrack-db)" = "healthy" ] && exit 0
+            sleep 3
+          done
+          echo "::error::MySQL did not become healthy"; exit 1
+
+      - name: Setup k6
+        uses: grafana/setup-k6-action@v1
+
+      - name: Run k6 load test
+        run: bash ./tests/load/run-load-test.sh "$PROFILE"
+
+      - name: Publish results to job summary
+        if: always()
+        run: |
+          SUMMARY=$(ls tests/load/results/*-summary.json 2>/dev/null | head -n 1)
+          [ -z "$SUMMARY" ] && exit 0
+          {
+            echo "### k6 ${PROFILE} test results"
+            echo ""
+            echo "| Metric | Value |"
+            echo "|---|---|"
+            jq -r '.metrics |
+              "| HTTP requests | \(.http_reqs.count) |",
+              "| Failed requests | \(.http_req_failed.value * 100 | tostring | .[0:5])% |",
+              "| Avg response time | \(.http_req_duration.avg | floor) ms |",
+              "| p95 response time | \(.http_req_duration["p(95)"] | floor) ms |",
+              "| Checks passed | \(.checks.passes) / \(.checks.passes + .checks.fails) |",
+              "| Pickups booked | \(.pickups_created.count) |"' "$SUMMARY"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload k6 reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: k6-${{ env.PROFILE }}-report
+          path: tests/load/results/
+          retention-days: 14
+
+      - name: Service logs (on failure)
+        if: failure()
+        run: docker compose logs identity logistics marketplace --tail 200
+
+      - name: Tear down stack
+        if: always()
+        run: docker compose down -v
