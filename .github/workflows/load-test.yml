@@ -1,5 +1,4 @@
-- name: Run k6 load testname: Load & Performance Testing (k6)
-
+name: Load & Performance Testing (k6)
 on:
   push:
     branches: [ "Dev", "main" ]
