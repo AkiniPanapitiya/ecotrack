@@ -1,0 +1,67 @@
+name: Code Quality & Metrics
+
+on:
+  push:
+    branches: [ "Dev", "main", "Deploy" ]
+  pull_request:
+    branches: [ "Dev", "main" ]
+  workflow_dispatch:
+  workflow_call:
+    secrets:
+      SONAR_TOKEN:
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: code-quality-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  code-quality:
+    name: Static Analysis, Coverage & Quality Gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION }}
+
+    steps:
+      - name: Checkout (full history for SonarCloud new-code detection)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET 10.0 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Setup Java 17 (SonarScanner)
+        if: env.SONAR_TOKEN != ''
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Run quality pipeline (local metrics gate)
+        if: env.SONAR_TOKEN == ''
+        shell: pwsh
+        run: ./quality/run-code-quality.ps1
+
+      - name: Run quality pipeline (with SonarCloud)
+        if: env.SONAR_TOKEN != ''
+        shell: pwsh
+        run: >
+          ./quality/run-code-quality.ps1 -Sonar
+          -SonarUrl https://sonarcloud.io
+          -SonarOrganization "$env:SONAR_ORGANIZATION"
+
+      - name: Upload quality reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: code-quality-reports
+          path: quality-reports/
+          retention-days: 14

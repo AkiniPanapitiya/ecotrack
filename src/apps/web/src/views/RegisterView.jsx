@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import {useNavigate} from 'react-router-dom';
 import { authApi } from '../services/api';
 import { Leaf, User, Building2, AlertCircle, CheckCircle2, ArrowRight } from 'lucide-react';
+import { PasswordInput } from '../components/PasswordInput';
 
 export const RegisterView = () => {
   const navigate = useNavigate();

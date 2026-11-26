@@ -107,3 +107,9 @@ export const disposalApi = {
   createCertificate: (data) => logisticsClient.post('/disposal/certificate', data),
   getCertificate: (pickupItemId) => logisticsClient.get(`/disposal/certificate/${pickupItemId}`),
 };
+
+// ECO-26 / E4.2: Drop-off & Dispatch Record Endpoints
+export const dropoffApi = {
+  recordDropoff: (pickupId, data) => logisticsClient.post(`/pickup/${pickupId}/dropoff`, data),
+  getDropoff: (pickupId) => logisticsClient.get(`/pickup/${pickupId}/dropoff`),
+};

@@ -1,0 +1,72 @@
+# EcoTrack coding standard (SE3112 Code Quality & Metrics)
+# Read by Visual Studio, VS Code, Rider, `dotnet build` and `dotnet format`.
+root = true
+
+[*]
+indent_style = space
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.{json,yml,yaml,jsx,js,css,html}]
+indent_size = 2
+
+[*.{cs,csproj,props,xml,runsettings}]
+indent_size = 4
+
+[*.cs]
+# ---------- Style preferences ----------
+csharp_style_namespace_declarations = file_scoped:suggestion
+csharp_prefer_braces = when_multiline:suggestion
+csharp_style_var_when_type_is_apparent = true:suggestion
+dotnet_style_readonly_field = true:warning
+dotnet_style_prefer_auto_properties = true:suggestion
+csharp_using_directive_placement = outside_namespace:suggestion
+
+# ---------- Naming rules ----------
+dotnet_naming_rule.interfaces_start_with_i.symbols = interface_symbols
+dotnet_naming_rule.interfaces_start_with_i.style = prefix_i
+dotnet_naming_rule.interfaces_start_with_i.severity = warning
+dotnet_naming_symbols.interface_symbols.applicable_kinds = interface
+dotnet_naming_style.prefix_i.required_prefix = I
+dotnet_naming_style.prefix_i.capitalization = pascal_case
+
+dotnet_naming_rule.private_fields_underscore.symbols = private_fields
+dotnet_naming_rule.private_fields_underscore.style = underscore_camel
+dotnet_naming_rule.private_fields_underscore.severity = suggestion
+dotnet_naming_symbols.private_fields.applicable_kinds = field
+dotnet_naming_symbols.private_fields.applicable_accessibilities = private
+dotnet_naming_style.underscore_camel.required_prefix = _
+dotnet_naming_style.underscore_camel.capitalization = camel_case
+
+# ---------- Rules we raise to WARNING (they matter for this project) ----------
+# Unused value assignment / unused private members = dead code
+dotnet_diagnostic.IDE0059.severity = warning
+dotnet_diagnostic.IDE0051.severity = warning
+dotnet_diagnostic.IDE0052.severity = warning
+# SQL built from strings must be reviewed (we use raw ADO.NET, no ORM)
+dotnet_diagnostic.CA2100.severity = warning
+# Insecure randomness / weak crypto
+dotnet_diagnostic.CA5394.severity = warning
+dotnet_diagnostic.CA5351.severity = warning
+# Dispose objects before losing scope (MySqlConnection, MySqlCommand)
+dotnet_diagnostic.CA2000.severity = warning
+
+# ---------- Rules we turn OFF, with the reason ----------
+# ASP.NET Core has no SynchronizationContext, so ConfigureAwait(false) adds noise only
+dotnet_diagnostic.CA2007.severity = none
+# Nullable reference types are enabled, so the compiler already checks null arguments
+dotnet_diagnostic.CA1062.severity = none
+# Web API projects are not class libraries; public types are expected
+dotnet_diagnostic.CA1515.severity = none
+# Culture-specific formatting is not a requirement for this API
+dotnet_diagnostic.CA1305.severity = suggestion
+dotnet_diagnostic.CA1307.severity = suggestion
+dotnet_diagnostic.CA1310.severity = suggestion
+# High-performance logging (LoggerMessage) is an optimisation, not a defect
+dotnet_diagnostic.CA1848.severity = suggestion
+dotnet_diagnostic.CA1873.severity = suggestion
+
+[tests/**/*.cs]
+# xUnit test method names use underscores (Method_Condition_Expected)
+dotnet_diagnostic.CA1707.severity = none
+dotnet_diagnostic.CA2000.severity = suggestion

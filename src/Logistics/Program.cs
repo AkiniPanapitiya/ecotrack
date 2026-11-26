@@ -49,6 +49,8 @@ builder.Services.AddScoped<IPickupRepository, PickupRepository>();
 builder.Services.AddScoped<IPickupService, PickupService>();
 builder.Services.AddScoped<IDisposalCertificateRepository, DisposalCertificateRepository>();
 builder.Services.AddScoped<IDisposalCertificateService, DisposalCertificateService>();
+builder.Services.AddScoped<IDropoffRepository, DropoffRepository>();
+builder.Services.AddScoped<IDropoffService, DropoffService>();
 
 // Configure Swagger / OpenAPI
 builder.Services.AddEndpointsApiExplorer();

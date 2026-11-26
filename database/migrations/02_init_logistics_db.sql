@@ -2,6 +2,7 @@
 -- EcoTrack Logistics Database Migration Script
 -- Sprint 1: E-Waste Pickup Scheduling (ECO-50)
 -- Sprint 3: Disposal Certification (ECO-71/E7.1)
+-- Sprint 4: Drop-off & Dispatch Record (ECO-26/E4.2)
 -- Target Database: ecotrack_logistics_db
 -- =============================================================================
 
@@ -134,3 +135,21 @@ DELIMITER ;
 
 CALL `sp_eco71_add_item_status`();
 DROP PROCEDURE IF EXISTS `sp_eco71_add_item_status`;
+
+-- 6. Drop-off Records Table (Sprint 4 - ECO-26 / E4.2 Drop-off & Dispatch Record)
+-- Confirms an item was actually collected and dropped off by the assigned
+-- driver/recycler. One drop-off record per pickup request (UNIQUE), linked to
+-- the original pickup via FK. Recording a drop-off moves the pickup to 'Collected'.
+CREATE TABLE IF NOT EXISTS `DropoffRecords` (
+    `Id` VARCHAR(36) NOT NULL PRIMARY KEY,
+    `PickupRequestId` VARCHAR(36) NOT NULL,
+    `RecordedBy` VARCHAR(36) NOT NULL,
+    `DropoffDate` DATE NOT NULL,
+    `DropoffTime` TIME NULL,
+    `ConditionNotes` TEXT NULL,
+    `CreatedAt` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    CONSTRAINT `fk_dropoff_pickup` FOREIGN KEY (`PickupRequestId`) REFERENCES `PickupRequests`(`Id`) ON DELETE RESTRICT,
+    CONSTRAINT `uq_dropoff_pickup` UNIQUE KEY (`PickupRequestId`),
+    INDEX `idx_dropoff_recorded_by` (`RecordedBy`),
+    INDEX `idx_dropoff_date` (`DropoffDate`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

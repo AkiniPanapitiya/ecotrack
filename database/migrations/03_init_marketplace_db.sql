@@ -57,6 +57,7 @@ CREATE TABLE IF NOT EXISTS `Listings` (
 -- ListingId -> Listings in same DB (enforced by FK)
 -- BuyerId    -> Users in ecotrack_identity_db (validated in app code)
 -- Status flow: Placed -> Completed (or Cancelled)
+-- An order is Cancelled when its payment record is Refunded (Story 20).
 -- PriceAtPurchase is snapshot of listing price at order time.
 CREATE TABLE IF NOT EXISTS `Orders` (
     `Id` VARCHAR(36) NOT NULL PRIMARY KEY,
@@ -71,3 +72,78 @@ CREATE TABLE IF NOT EXISTS `Orders` (
     INDEX `idx_order_status` (`Status`),
     CONSTRAINT `fk_order_listing` FOREIGN KEY (`ListingId`) REFERENCES `Listings`(`Id`) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 4. Payment Records Table
+-- Story 20: Escrow & Payment Record (E6.2)
+-- Record-only escrow ledger: tracks the payment status of every order.
+-- No real payment gateway is used - this table is a record only.
+-- One payment record per order (unique constraint on OrderId).
+-- OrderId    -> Orders in same DB (enforced by FK)
+-- BuyerId    -> Users in ecotrack_identity_db (validated in app code)
+-- RecyclerId -> seller of the listing, copied from Listings.RecyclerId
+-- Status flow: Pending -> Paid -> Refunded
+-- A record is created as Pending in the same transaction that places the order.
+-- Refunding a Paid record also sets the linked order to Cancelled.
+CREATE TABLE IF NOT EXISTS `PaymentRecords` (
+    `Id` VARCHAR(36) NOT NULL PRIMARY KEY,
+    `OrderId` VARCHAR(36) NOT NULL,
+    `BuyerId` VARCHAR(36) NOT NULL,
+    `RecyclerId` VARCHAR(36) NOT NULL,
+    `Amount` DECIMAL(12, 2) NOT NULL,
+    `Status` VARCHAR(20) NOT NULL DEFAULT 'Pending',
+    `PaidAt` DATETIME(6) NULL,
+    `RefundedAt` DATETIME(6) NULL,
+    `UpdatedBy` VARCHAR(36) NULL,
+    `CreatedAt` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    `UpdatedAt` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    UNIQUE KEY `uq_payment_order` (`OrderId`),
+    INDEX `idx_payment_status` (`Status`),
+    INDEX `idx_payment_buyer` (`BuyerId`),
+    INDEX `idx_payment_recycler` (`RecyclerId`),
+    CONSTRAINT `fk_payment_order` FOREIGN KEY (`OrderId`) REFERENCES `Orders`(`Id`) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Backfill: give every existing order a linked Pending payment record.
+-- Safe to re-run: orders that already have a record are skipped.
+INSERT INTO `PaymentRecords` (`Id`, `OrderId`, `BuyerId`, `RecyclerId`, `Amount`, `Status`)
+SELECT UUID(), o.`Id`, o.`BuyerId`, l.`RecyclerId`, o.`PriceAtPurchase`, 'Pending'
+FROM `Orders` o
+INNER JOIN `Listings` l ON l.`Id` = o.`ListingId`
+WHERE NOT EXISTS (SELECT 1 FROM `PaymentRecords` p WHERE p.`OrderId` = o.`Id`);
+
+-- 5. Sales Report View
+-- Story 21: Sales, Inventory & Revenue Report (E6.3)
+-- One row per (non-deleted) listing, with its category and, when sold,
+-- its order and payment record. The report API aggregates this view.
+-- Category  -> PickupRequests.Category in ecotrack_logistics_db
+--              (Listing -> ItemValuation -> PickupItem -> PickupRequest)
+-- Data definitions used by the report:
+--   Total sales  = orders that are not Cancelled, by order date
+--   Sales value  = sum of PriceAtPurchase for those orders
+--   Revenue      = sum of payment Amount where payment Status = 'Paid'
+--   Pending      = sum of payment Amount where payment Status = 'Pending'
+--   Refunded     = sum of payment Amount where payment Status = 'Refunded'
+--   Inventory    = current listing count by Status (Available = in stock)
+-- Re-runnable: CREATE OR REPLACE keeps the view in sync with this script.
+CREATE OR REPLACE VIEW `vw_SalesReportItems` AS
+SELECT
+    l.`Id` AS `ListingId`,
+    l.`RecyclerId`,
+    l.`Title`,
+    l.`Price` AS `ListingPrice`,
+    l.`Status` AS `ListingStatus`,
+    l.`CreatedAt` AS `ListedAt`,
+    COALESCE(NULLIF(TRIM(pr.`Category`), ''), 'Uncategorised') AS `Category`,
+    o.`Id` AS `OrderId`,
+    o.`Status` AS `OrderStatus`,
+    o.`PriceAtPurchase`,
+    o.`CreatedAt` AS `OrderedAt`,
+    p.`Status` AS `PaymentStatus`,
+    p.`Amount` AS `PaymentAmount`
+FROM `Listings` l
+INNER JOIN `ItemValuations` v ON v.`Id` = l.`ValuationId`
+LEFT JOIN `ecotrack_logistics_db`.`PickupItems` pi ON pi.`Id` = v.`PickupItemId`
+LEFT JOIN `ecotrack_logistics_db`.`PickupRequests` pr ON pr.`Id` = pi.`PickupRequestId`
+LEFT JOIN `Orders` o ON o.`ListingId` = l.`Id`
+LEFT JOIN `PaymentRecords` p ON p.`OrderId` = o.`Id`
+WHERE l.`IsDeleted` = 0;

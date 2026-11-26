@@ -18,6 +18,10 @@ public class OrderResponseDto
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 
+    // Linked payment record (Story 20 — Escrow & Payment Record)
+    public Guid? PaymentId { get; set; }
+    public string? PaymentStatus { get; set; }
+
     // Related data
     public ListingBriefDto? Listing { get; set; }
 }

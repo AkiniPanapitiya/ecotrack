@@ -22,9 +22,11 @@ public class OrderRepository : IOrderRepository
                    o.PriceAtPurchase AS o_PriceAtPurchase, o.Status AS o_Status,
                    o.CreatedAt AS o_CreatedAt, o.UpdatedAt AS o_UpdatedAt,
                    l.Id AS l_Id, l.ValuationId AS l_ValuationId, l.Title AS l_Title,
-                   l.Price AS l_Price, l.PhotoPath AS l_PhotoPath, l.Status AS l_Status
+                   l.Price AS l_Price, l.PhotoPath AS l_PhotoPath, l.Status AS l_Status,
+                   p.Id AS p_Id, p.Status AS p_Status
             FROM Orders o
             INNER JOIN Listings l ON l.Id = o.ListingId
+            LEFT JOIN PaymentRecords p ON p.OrderId = o.Id
             WHERE o.Id = @Id AND l.IsDeleted = 0
             LIMIT 1;";
         await using var command = new MySqlCommand(sql, connection);
@@ -72,6 +74,24 @@ public class OrderRepository : IOrderRepository
             if (updated == 0)
                 throw new InvalidOperationException("Listing is no longer available.");
 
+            // Create the linked payment record as Pending (Story 20 — record only, no payment gateway)
+            const string paymentSql = @"
+                INSERT INTO PaymentRecords (Id, OrderId, BuyerId, RecyclerId, Amount, Status, CreatedAt, UpdatedAt)
+                SELECT @PaymentId, @OrderId, @BuyerId, l.RecyclerId, @Amount, 'Pending', @CreatedAt, @UpdatedAt
+                FROM Listings l
+                WHERE l.Id = @ListingId;";
+            await using var paymentCmd = new MySqlCommand(paymentSql, connection, transaction);
+            paymentCmd.Parameters.AddWithValue("@PaymentId", Guid.NewGuid().ToString());
+            paymentCmd.Parameters.AddWithValue("@OrderId", orderId.ToString());
+            paymentCmd.Parameters.AddWithValue("@BuyerId", buyerId.ToString());
+            paymentCmd.Parameters.AddWithValue("@Amount", priceAtPurchase);
+            paymentCmd.Parameters.AddWithValue("@ListingId", listingId.ToString());
+            paymentCmd.Parameters.AddWithValue("@CreatedAt", DateTime.UtcNow);
+            paymentCmd.Parameters.AddWithValue("@UpdatedAt", DateTime.UtcNow);
+            var paymentRows = await paymentCmd.ExecuteNonQueryAsync(cancellationToken);
+            if (paymentRows == 0)
+                throw new InvalidOperationException("Failed to create payment record.");
+
             await transaction.CommitAsync(cancellationToken);
 
             // Fetch created order with listing data
@@ -80,9 +100,11 @@ public class OrderRepository : IOrderRepository
                        o.PriceAtPurchase AS o_PriceAtPurchase, o.Status AS o_Status,
                        o.CreatedAt AS o_CreatedAt, o.UpdatedAt AS o_UpdatedAt,
                        l.Id AS l_Id, l.ValuationId AS l_ValuationId, l.Title AS l_Title,
-                       l.Price AS l_Price, l.PhotoPath AS l_PhotoPath, l.Status AS l_Status
+                       l.Price AS l_Price, l.PhotoPath AS l_PhotoPath, l.Status AS l_Status,
+                       p.Id AS p_Id, p.Status AS p_Status
                 FROM Orders o
                 INNER JOIN Listings l ON l.Id = o.ListingId
+                LEFT JOIN PaymentRecords p ON p.OrderId = o.Id
                 WHERE o.Id = @Id
                 LIMIT 1;";
             await using var selectCmd = new MySqlCommand(selectSql, connection);
@@ -111,9 +133,11 @@ public class OrderRepository : IOrderRepository
                    o.PriceAtPurchase AS o_PriceAtPurchase, o.Status AS o_Status,
                    o.CreatedAt AS o_CreatedAt, o.UpdatedAt AS o_UpdatedAt,
                    l.Id AS l_Id, l.ValuationId AS l_ValuationId, l.Title AS l_Title,
-                   l.Price AS l_Price, l.PhotoPath AS l_PhotoPath, l.Status AS l_Status
+                   l.Price AS l_Price, l.PhotoPath AS l_PhotoPath, l.Status AS l_Status,
+                   p.Id AS p_Id, p.Status AS p_Status
             FROM Orders o
             INNER JOIN Listings l ON l.Id = o.ListingId
+            LEFT JOIN PaymentRecords p ON p.OrderId = o.Id
             WHERE o.BuyerId = @BuyerId AND l.IsDeleted = 0
             ORDER BY o.CreatedAt DESC
             LIMIT @Limit OFFSET @Offset;";
@@ -159,6 +183,8 @@ public class OrderRepository : IOrderRepository
             Status = reader.GetString("o_Status"),
             CreatedAt = reader.GetDateTime("o_CreatedAt"),
             UpdatedAt = reader.GetDateTime("o_UpdatedAt"),
+            PaymentId = reader.IsDBNull(reader.GetOrdinal("p_Id")) ? null : Guid.Parse(reader.GetString("p_Id")),
+            PaymentStatus = reader.IsDBNull(reader.GetOrdinal("p_Status")) ? null : reader.GetString("p_Status"),
             Listing = new ListingBriefDto
             {
                 Id = Guid.Parse(reader.GetString("l_Id")),

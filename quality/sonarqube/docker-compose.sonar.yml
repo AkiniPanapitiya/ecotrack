@@ -1,0 +1,26 @@
+# Local SonarQube server for the Code Quality & Metrics dashboard.
+# Start:  docker compose -f quality/sonarqube/docker-compose.sonar.yml up -d
+# Open:   http://localhost:9000   (first login admin / admin, then change the password)
+# Stop:   docker compose -f quality/sonarqube/docker-compose.sonar.yml down
+# Data is kept in named volumes, so analyses survive a restart.
+
+name: ecotrack-quality
+
+services:
+  sonarqube:
+    image: sonarqube:community
+    container_name: ecotrack-sonarqube
+    ports:
+      - "9000:9000"
+    environment:
+      SONAR_ES_BOOTSTRAP_CHECKS_DISABLE: "true"
+    volumes:
+      - sonarqube_data:/opt/sonarqube/data
+      - sonarqube_extensions:/opt/sonarqube/extensions
+      - sonarqube_logs:/opt/sonarqube/logs
+    restart: unless-stopped
+
+volumes:
+  sonarqube_data:
+  sonarqube_extensions:
+  sonarqube_logs:
